@@ -388,17 +388,12 @@ def make_table(summary_df):
 def _apply_danone_style():
     """Inject Danone AMN SFE styling with card-based layout.
 
-    Light gradient background with solid white rounded cards behind every
-    chart; plotly figures use transparent paper so the cards show through.
+    Plain white page background with solid white rounded cards around
+    every chart; plotly figures use transparent paper so the cards show.
     """
     st.markdown(
         f"""
         <style>
-        /* Light gradient background */
-        [data-testid="stAppViewContainer"] {{
-            background: linear-gradient(135deg, #ffffff 0%, #f0f4fa 60%, #e3ecf7 100%);
-            background-attachment: fixed;
-        }}
         [data-testid="stHeader"] {{
             background: transparent;
         }}
