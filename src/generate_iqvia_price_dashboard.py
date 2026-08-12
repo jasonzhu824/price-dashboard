@@ -215,7 +215,7 @@ def _make_empty_figure():
     fig.add_annotation(
         text="No data for current selection",
         x=0.5, y=0.5, xref="paper", yref="paper", showarrow=False,
-        font=dict(family=FONT_FAMILY, size=14, color=COLOR_BLACK),
+        font=dict(family=FONT_FAMILY, size=15, color=COLOR_BLACK),
     )
     fig.update_layout(
         xaxis=dict(visible=False), yaxis=dict(visible=False),
@@ -242,20 +242,20 @@ def make_figure_value(summary_df):
     fig.update_layout(
         template="plotly_white",
         paper_bgcolor="rgba(0,0,0,0)", plot_bgcolor="rgba(0,0,0,0)",
-        font=dict(family=FONT_FAMILY, size=14, color=COLOR_BLACK),
+        font=dict(family=FONT_FAMILY, size=15, color=COLOR_BLACK),
         title=dict(
             text="Monthly Value",
-            font=dict(family=FONT_FAMILY, size=20, color=COLOR_PRIMARY),
+            font=dict(family=FONT_FAMILY, size=24, color=COLOR_PRIMARY),
         ),
-        xaxis=dict(title=None, tickfont=dict(size=10), gridcolor="#e6e6e6",
+        xaxis=dict(title=None, tickfont=dict(size=11), gridcolor="#e6e6e6",
                    tickangle=-45, tickmode="array",
                    tickvals=list(x)[::3], ticktext=list(x)[::3]),
         yaxis=dict(
-            title=dict(text="Value (CNY)", font=dict(size=14, color=COLOR_PRIMARY)),
+            title=dict(text="Value (CNY)", font=dict(size=15, color=COLOR_PRIMARY)),
             gridcolor="#e6e6e6",
         ),
         hovermode="x unified",
-        margin=dict(l=60, r=20, t=80, b=40),
+        margin=dict(l=60, r=20, t=90, b=40),
     )
     return fig
 
@@ -277,20 +277,20 @@ def make_figure_volume(summary_df):
     fig.update_layout(
         template="plotly_white",
         paper_bgcolor="rgba(0,0,0,0)", plot_bgcolor="rgba(0,0,0,0)",
-        font=dict(family=FONT_FAMILY, size=14, color=COLOR_BLACK),
+        font=dict(family=FONT_FAMILY, size=15, color=COLOR_BLACK),
         title=dict(
             text="Monthly Volume",
-            font=dict(family=FONT_FAMILY, size=20, color=COLOR_PRIMARY),
+            font=dict(family=FONT_FAMILY, size=24, color=COLOR_PRIMARY),
         ),
-        xaxis=dict(title=None, tickfont=dict(size=10), gridcolor="#e6e6e6",
+        xaxis=dict(title=None, tickfont=dict(size=11), gridcolor="#e6e6e6",
                    tickangle=-45, tickmode="array",
                    tickvals=list(x)[::3], ticktext=list(x)[::3]),
         yaxis=dict(
-            title=dict(text="Volume", font=dict(size=14, color=COLOR_SECONDARY)),
+            title=dict(text="Volume", font=dict(size=15, color=COLOR_SECONDARY)),
             gridcolor="#e6e6e6",
         ),
         hovermode="x unified",
-        margin=dict(l=60, r=20, t=80, b=40),
+        margin=dict(l=60, r=20, t=90, b=40),
     )
     return fig
 
@@ -329,16 +329,16 @@ def make_figure_price(summary_df):
     fig.update_layout(
         template="plotly_white",
         paper_bgcolor="rgba(0,0,0,0)", plot_bgcolor="rgba(0,0,0,0)",
-        font=dict(family=FONT_FAMILY, size=14, color=COLOR_BLACK),
+        font=dict(family=FONT_FAMILY, size=15, color=COLOR_BLACK),
         title=dict(
             text="Monthly Price",
-            font=dict(family=FONT_FAMILY, size=20, color=COLOR_PRIMARY),
+            font=dict(family=FONT_FAMILY, size=24, color=COLOR_PRIMARY),
         ),
-        xaxis=dict(title=None, tickfont=dict(size=10), gridcolor="#e6e6e6",
+        xaxis=dict(title=None, tickfont=dict(size=11), gridcolor="#e6e6e6",
                    tickangle=-45, tickmode="array",
                    tickvals=list(x)[::3], ticktext=list(x)[::3]),
         yaxis=dict(
-            title=dict(text="Price (CNY/Unit)", font=dict(size=14, color=COLOR_TERTIARY)),
+            title=dict(text="Price (CNY/Unit)", font=dict(size=15, color=COLOR_TERTIARY)),
             gridcolor="#e6e6e6",
         ),
         # Horizontal legend below the plot avoids right-edge truncation
@@ -346,10 +346,10 @@ def make_figure_price(summary_df):
             orientation="h",
             yanchor="top", y=-0.28,
             xanchor="center", x=0.5,
-            font=dict(size=12),
+            font=dict(size=13)
         ),
         hovermode="x unified",
-        margin=dict(l=60, r=60, t=80, b=90),
+        margin=dict(l=60, r=60, t=90, b=90),
     )
     return fig
 
@@ -359,7 +359,7 @@ def make_table(summary_df):
     header = dict(
         values=["Month", "Value", "Volume", "Price"],
         fill_color=COLOR_PRIMARY,
-        font=dict(color="white", size=14, family=FONT_FAMILY),
+        font=dict(color="white", size=15, family=FONT_FAMILY),
         align="center",
     )
     cells = dict(
@@ -370,7 +370,7 @@ def make_table(summary_df):
             summary_df["Price"],
         ],
         fill_color="white",
-        font=dict(size=14, family=FONT_FAMILY, color=COLOR_BLACK),
+        font=dict(size=15, family=FONT_FAMILY, color=COLOR_BLACK),
         align="center",
         format=[None, ".2f", ".2f", ".2f"],
     )
@@ -379,7 +379,7 @@ def make_table(summary_df):
         layout=go.Layout(
             paper_bgcolor="rgba(0,0,0,0)",
             margin=dict(l=10, r=10, t=10, b=10),
-            height=60 + 24 * max(len(summary_df), 1),
+            height=64 + 26 * max(len(summary_df), 1),
         ),
     )
 
@@ -425,11 +425,15 @@ def _apply_danone_style():
             font-family: {FONT_FAMILY};
             font-weight: bold;
         }}
+        h5 {{
+            font-size: 17px;
+        }}
         /* Filter labels keep the Danone accent orange */
         .stMultiSelect > label {{
             color: {COLOR_ACCENT};
             font-weight: bold;
             font-family: {FONT_FAMILY};
+            font-size: 15px;
         }}
         /* Frosted select widgets */
         [data-baseweb="select"] > div {{
@@ -456,11 +460,11 @@ def build_dashboard():
     _apply_danone_style()
     st.markdown(
         f'<h1 style="color:{COLOR_PRIMARY};font-family:{FONT_FAMILY};'
-        f'font-size:20pt;font-weight:bold;margin:0;">IQVIA Price Dashboard</h1>',
+        f'font-size:30pt;font-weight:bold;margin:0;">IQVIA Price Dashboard</h1>',
         unsafe_allow_html=True,
     )
     st.markdown(
-        f'<p style="font-size:10pt;font-style:italic;color:#5a6b8c;">'
+        f'<p style="font-size:12pt;font-style:italic;color:#5a6b8c;">'
         f'Source: MS Tracking DB_2301-2605 | Price = Value / Volume | 2023 - 2026</p>',
         unsafe_allow_html=True,
     )
@@ -499,7 +503,7 @@ def build_dashboard():
     st.plotly_chart(make_figure_volume(summary_df), use_container_width=True)
 
     st.markdown(
-        f'<h3 style="font-family:{FONT_FAMILY};font-size:20px;font-weight:bold;'
+        f'<h3 style="font-family:{FONT_FAMILY};font-size:24px;font-weight:bold;'
         f'color:{COLOR_PRIMARY};">Monthly Summary</h3>',
         unsafe_allow_html=True,
     )
