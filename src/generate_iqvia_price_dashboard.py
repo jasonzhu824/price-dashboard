@@ -66,6 +66,12 @@ COLOR_ACCENT2 = "#56b9b7"
 COLOR_BLACK = "#000000"
 FONT_FAMILY = "Danone One Condensed, Arial, sans-serif"
 
+# Color palette for multiple price lines (cycles when more lines than colors)
+LINE_COLORS = [
+    COLOR_PRIMARY, COLOR_SECONDARY, COLOR_TERTIARY,
+    COLOR_UP, COLOR_ACCENT, COLOR_ACCENT2, COLOR_QUATERNARY,
+]
+
 # Price spike marking threshold (month-over-month change, in percent)
 PRICE_CHANGE_THRESHOLD_PCT = 5.0
 
@@ -208,6 +214,64 @@ def make_summary_df(data_df, selections):
     return summary_df
 
 
+def make_price_lines_df(data_df, selections):
+    """Build per-line monthly Price series for the current selection.
+
+    Line grouping follows the selection so multiple Products or Companies
+    can be compared at once on the Price chart:
+    - >=2 Products explicitly selected -> one line per Product
+    - >=2 Companies explicitly selected -> one line per Company
+    - otherwise a single aggregated line (Line = "Total")
+
+    Args:
+        data_df: Full DataFrame.
+        selections: Dict mapping column name to list/tuple of selected values.
+
+    Returns:
+        DataFrame with columns YM, YM_label, Value, Volume, Price, Line.
+        Price is NaN for months without records (shown as gaps).
+    """
+    mask = build_selection_mask(data_df, selections, FILTER_ORDER)
+    sub_df = data_df[mask]
+    full_ym = _full_ym_range(data_df)
+    sel_products = selections.get("Product", [])
+    sel_companies = selections.get("Company", [])
+    if len(sel_products) >= 2:
+        group_key = "Product"
+    elif len(sel_companies) >= 2:
+        group_key = "Company"
+    else:
+        group_key = None
+
+    # Single aggregated line: reuse the plain monthly summary
+    if group_key is None:
+        return make_summary_df(data_df, selections).assign(Line="Total")
+
+    line_frames = []
+    for key, grp in sub_df.groupby(group_key):
+        monthly = (
+            grp.groupby("YM", as_index=False)
+            .agg(Value=("Value", "sum"), Volume=("Volume", "sum"))
+            .set_index("YM")
+            .reindex(full_ym, fill_value=0)
+            .rename_axis("YM")
+            .reset_index()
+            .assign(
+                Price=lambda x: np.where(
+                    x["Volume"] != 0,
+                    np.round(x["Value"] / x["Volume"], 4),
+                    np.nan,
+                )
+            )
+            .assign(YM_label=lambda x: x["YM"].astype(str).str.replace(
+                r"(\d{4})(\d{2})", r"\1-\2", regex=True
+            ))
+            .assign(Line=key)
+        )
+        line_frames.append(monthly)
+    return pd.concat(line_frames, ignore_index=True)
+
+
 # === Chart & Table (Danone AMN SFE style)
 def _make_empty_figure():
     """Build an empty figure with a 'no data' annotation."""
@@ -298,8 +362,10 @@ def make_figure_volume(summary_df):
 def make_figure_price(summary_df):
     """Build the monthly Price line chart with spike marking.
 
-    Months whose month-over-month Price change exceeds
-    PRICE_CHANGE_THRESHOLD_PCT (absolute value) are marked in red.
+    Supports multiple price lines: when the input contains a "Line" column
+    (see make_price_lines_df) every group is drawn as its own line with its
+    own |MoM change| > PRICE_CHANGE_THRESHOLD_PCT red marking. Without a
+    "Line" column a single aggregated line is drawn (backwards compatible).
     The legend sits horizontally below the plot so long series names
     (e.g. "MoM Change > 5%") are never truncated.
     Styling follows the Danone AMN SFE style guide (colors / font sizes).
@@ -308,24 +374,55 @@ def make_figure_price(summary_df):
         return _make_empty_figure()
 
     fig = go.Figure()
-    x = summary_df["YM_label"]
-    price = summary_df["Price"]
-    fig.add_trace(go.Scatter(
-        x=x, y=price, name="Price",
-        mode="lines+markers",
-        line=dict(color=COLOR_TERTIARY, width=3),
-        marker=dict(size=6, color=COLOR_TERTIARY),
-    ))
-    # Mark months with |MoM change| above the threshold in red
-    pct_change = price.pct_change() * 100
-    spike_y = price.where(pct_change.abs() > PRICE_CHANGE_THRESHOLD_PCT)
-    fig.add_trace(go.Scatter(
-        x=x, y=spike_y, name=f"MoM Change > {PRICE_CHANGE_THRESHOLD_PCT:.0f}%",
-        mode="lines+markers",
-        line=dict(color=COLOR_DOWN, width=3),
-        marker=dict(size=8, color=COLOR_DOWN),
-        connectgaps=False,
-    ))
+    has_lines = "Line" in summary_df.columns
+    if has_lines:
+        # Full month sequence for the shared x-axis
+        x = (
+            summary_df[["YM", "YM_label"]]
+            .drop_duplicates()
+            .sort_values("YM")["YM_label"]
+        )
+        for idx, (line, grp) in enumerate(summary_df.groupby("Line")):
+            color = LINE_COLORS[idx % len(LINE_COLORS)]
+            grp = grp.sort_values("YM")
+            price = grp["Price"]
+            fig.add_trace(go.Scatter(
+                x=grp["YM_label"], y=price, name=line,
+                mode="lines+markers",
+                line=dict(color=color, width=3),
+                marker=dict(size=6, color=color),
+            ))
+            # Mark |MoM change| above the threshold in red per line
+            pct_change = price.pct_change() * 100
+            spike_y = price.where(pct_change.abs() > PRICE_CHANGE_THRESHOLD_PCT)
+            fig.add_trace(go.Scatter(
+                x=grp["YM_label"], y=spike_y,
+                name=f"{line} | MoM > {PRICE_CHANGE_THRESHOLD_PCT:.0f}%",
+                mode="lines+markers",
+                line=dict(color=COLOR_DOWN, width=3),
+                marker=dict(size=8, color=COLOR_DOWN),
+                connectgaps=False,
+                showlegend=False,
+            ))
+    else:
+        x = summary_df["YM_label"]
+        price = summary_df["Price"]
+        fig.add_trace(go.Scatter(
+            x=x, y=price, name="Price",
+            mode="lines+markers",
+            line=dict(color=COLOR_TERTIARY, width=3),
+            marker=dict(size=6, color=COLOR_TERTIARY),
+        ))
+        # Mark months with |MoM change| above the threshold in red
+        pct_change = price.pct_change() * 100
+        spike_y = price.where(pct_change.abs() > PRICE_CHANGE_THRESHOLD_PCT)
+        fig.add_trace(go.Scatter(
+            x=x, y=spike_y, name=f"MoM Change > {PRICE_CHANGE_THRESHOLD_PCT:.0f}%",
+            mode="lines+markers",
+            line=dict(color=COLOR_DOWN, width=3),
+            marker=dict(size=8, color=COLOR_DOWN),
+            connectgaps=False,
+        ))
     fig.update_layout(
         template="plotly_white",
         paper_bgcolor="rgba(0,0,0,0)", plot_bgcolor="rgba(0,0,0,0)",
@@ -488,8 +585,9 @@ def build_dashboard():
     # Summary, charts and table for the current selection
     summary_df = make_summary_df(df, selections)
 
-    # Price chart on top (full width)
-    st.plotly_chart(make_figure_price(summary_df), use_container_width=True)
+    # Price chart on top (full width) — one line per selected Product/Company
+    price_lines_df = make_price_lines_df(df, selections)
+    st.plotly_chart(make_figure_price(price_lines_df), use_container_width=True)
 
     # Value and Volume bar charts stacked (Value on top, Volume below)
     st.plotly_chart(make_figure_value(summary_df), use_container_width=True)

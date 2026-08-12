@@ -154,5 +154,50 @@ class TestPriceSpikeMarking(unittest.TestCase):
         self.assertTrue(all(np.isnan(v) for v in spike_y))
 
 
+class TestPriceLines(unittest.TestCase):
+    """Monthly Price must split into one line per Product/Company when multi-selected."""
+
+    def setUp(self):
+        self.data_df = pd.DataFrame({
+            "YM": [202301, 202301, 202302, 202302],
+            "VBP": ["GD+20"] * 4,
+            "Province": ["广东"] * 4,
+            "City": ["深圳"] * 4,
+            "Channel": ["Hospital"] * 4,
+            "Company": ["纽迪希亚", "纽迪希亚", "费森", "费森"],
+            "Tube-ONS": ["Tube"] * 4,
+            "Product": ["百普素", "乐赋", "百普素", "乐赋"],
+            "Product Category": ["General"] * 4,
+            "Value": [100.0, 200.0, 150.0, 250.0],
+            "Volume": [10.0, 20.0, 15.0, 25.0],
+        })
+        self.filters = {col: [] for col in module.FILTER_ORDER}
+
+    def test_grouped_by_product_when_multiple_products(self):
+        self.filters["Product"] = ["百普素", "乐赋"]
+        lines_df = module.make_price_lines_df(self.data_df, self.filters)
+        self.assertEqual(sorted(lines_df["Line"].unique()), ["乐赋", "百普素"])
+        self.assertEqual(len(lines_df), 4)  # 2 lines x full month range
+
+    def test_grouped_by_company_when_only_companies_selected(self):
+        self.filters["Company"] = ["纽迪希亚", "费森"]
+        lines_df = module.make_price_lines_df(self.data_df, self.filters)
+        self.assertEqual(sorted(lines_df["Line"].unique()), ["纽迪希亚", "费森"])
+
+    def test_single_total_line_without_grouping(self):
+        lines_df = module.make_price_lines_df(self.data_df, self.filters)
+        self.assertEqual(list(lines_df["Line"].unique()), ["Total"])
+        self.assertEqual(len(lines_df), 2)
+
+    def test_multi_line_figure_draws_main_and_spike_traces(self):
+        self.filters["Product"] = ["百普素", "乐赋"]
+        lines_df = module.make_price_lines_df(self.data_df, self.filters)
+        fig = module.make_figure_price(lines_df)
+        # 2 main lines + 2 per-line spike traces (hidden from legend)
+        self.assertEqual(len(fig.data), 4)
+        legend_names = [t.name for t in fig.data if t.showlegend is not False]
+        self.assertEqual(sorted(legend_names), ["乐赋", "百普素"])
+
+
 if __name__ == "__main__":
     unittest.main(verbosity=2)
