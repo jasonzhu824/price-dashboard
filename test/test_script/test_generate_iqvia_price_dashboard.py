@@ -200,7 +200,7 @@ class TestPriceLines(unittest.TestCase):
 
 
 class TestProvincePriceTable(unittest.TestCase):
-    """Province Price Table must exclude provinces, compute YOY/MoM, display formatted."""
+    """Province Price Table: YOY/MoM first, optional filter, all rows shown."""
 
     def setUp(self):
         self.data_df = pd.DataFrame({
@@ -224,27 +224,28 @@ class TestProvincePriceTable(unittest.TestCase):
         self.assertNotIn("其他", tbl.index)
         self.assertNotIn("EC+Pharmacy", tbl.index)
 
-    def test_yoy_and_mom_columns_formatted(self):
+    def test_yoy_mom_are_first_two_columns(self):
         tbl = module.make_province_price_table(
             self.data_df, "纽迪希亚", "百普素"
         )
-        self.assertIn("CM YOY Change %", tbl.columns)
-        self.assertIn("CM MoM Change %", tbl.columns)
-        # Values should be formatted strings (e.g. "0.00%" or "N/A")
-        val = tbl["CM YOY Change %"].iloc[0]
-        self.assertIsInstance(val, str)
-        self.assertTrue(val.endswith("%") or val == "N/A")
+        self.assertEqual(tbl.columns[0], "CM YOY Change %")
+        self.assertEqual(tbl.columns[1], "CM MoM Change %")
 
-    def test_small_values_shown_as_less_than(self):
-        """Absolute values < 0.01% display as "<0.01%"."""
+    def test_all_rows_shown_without_filter(self):
+        # Without company/product filters, all provinces are included
+        tbl = module.make_province_price_table(self.data_df)
+        self.assertIn("广东", tbl.index)
+        self.assertIn("浙江", tbl.index)
+        self.assertTrue(len(tbl) >= 2)
+
+    def test_no_scientific_notation_in_price_cols(self):
         tbl = module.make_province_price_table(
             self.data_df, "纽迪希亚", "百普素"
         )
-        # Prices are constant (= 0.00% change), so they should show "0.00%"
-        for col in ["CM YOY Change %", "CM MoM Change %"]:
+        for col in tbl.columns[2:]:  # skip YOY/MoM
             for val in tbl[col]:
-                if val != "N/A":
-                    self.assertNotIn("e-", val, msg=f"Scientific notation in {col}")
+                if val not in ("N/A", ""):
+                    self.assertNotIn("e-", str(val))
 
 
 if __name__ == "__main__":

@@ -275,23 +275,23 @@ def make_price_lines_df(data_df, selections):
 EXCLUDED_PROVINCES = ["其他", "EC+Pharmacy"]
 
 
-def make_province_price_table(data_df, company, product):
+def make_province_price_table(data_df, company=None, product=None):
     """Build a province × month price table with CM YOY / MoM change.
 
     Each row is a province ("其他" and "EC+Pharmacy" excluded). Monthly
-    price columns cover the full data range.  The last two columns are:
-    - CM YOY Change % (latest month vs same month last year)
-    - CM MoM Change % (latest month vs previous month)
-    The table is sorted by CM YOY Change % descending.
+    price columns cover the full data range. When company and product are
+    provided the table filters to that specific combo; when omitted the
+    table shows the aggregated price across all companies/products.
+    The first two columns are CM YOY Change % and CM MoM Change %.
 
     Args:
         data_df: Full DataFrame.
-        company: Selected company name.
-        product: Selected product name.
+        company: Optional company name to filter on.
+        product: Optional product name to filter on.
 
     Returns:
-        DataFrame indexed by province with monthly price columns and the
-        two computed metric columns.
+        DataFrame indexed by province with CM YOY/MoM first, then monthly
+        price columns, sorted by CM YOY Change % descending.
     """
     all_provinces = sorted(
         p for p in data_df["Province"].dropna().unique()
@@ -309,8 +309,10 @@ def make_province_price_table(data_df, company, product):
     mom_ym = yms[mom_idx] if mom_idx >= 0 else latest_ym
 
     selections = {col: [] for col in FILTER_ORDER}
-    selections["Company"] = [company]
-    selections["Product"] = [product]
+    if company:
+        selections["Company"] = [company]
+    if product:
+        selections["Product"] = [product]
 
     records = {}
     for province in all_provinces:
@@ -360,6 +362,10 @@ def make_province_price_table(data_df, company, product):
     # Format for display after sorting (string formatting breaks ordering)
     price_df["CM YOY Change %"] = price_df["CM YOY Change %"].apply(_fmt_pct)
     price_df["CM MoM Change %"] = price_df["CM MoM Change %"].apply(_fmt_pct)
+    # Move YOY/MoM to the first two columns
+    price_cols = [c for c in price_df.columns
+                  if c not in ("CM YOY Change %", "CM MoM Change %")]
+    price_df = price_df[["CM YOY Change %", "CM MoM Change %"] + price_cols]
     return price_df
 
 
@@ -599,46 +605,25 @@ def build_dashboard():
         unsafe_allow_html=True,
     )
     st.caption(
-        "Select Company and Product to view province-level monthly price "
-        "table (\"其他\" and \"EC+Pharmacy\" excluded)"
+        "All provinces (\"其他\" and \"EC+Pharmacy\" excluded), "
+        "aggregated across all Companies and Products. "
+        "Sorted by CM YOY Change % descending."
     )
-    bd_company = st.selectbox(
-        "Company", sorted(df["Company"].dropna().unique()),
-        key="bd_company", index=None,
-        placeholder="Select Company",
+    tbl = make_province_price_table(df)
+    price_cols = [
+        c for c in tbl.columns
+        if c not in ("CM YOY Change %", "CM MoM Change %")
+    ]
+    col_config = {
+        c: st.column_config.TextColumn(c)
+        for c in price_cols
+    }
+    col_config["CM YOY Change %"] = st.column_config.TextColumn("CM YOY Change %")
+    col_config["CM MoM Change %"] = st.column_config.TextColumn("CM MoM Change %")
+    st.dataframe(
+        tbl, use_container_width=True,
+        column_config=col_config,
     )
-    bd_products = []
-    if bd_company:
-        bd_products = sorted(
-            df.loc[df["Company"] == bd_company, "Product"]
-            .dropna().unique()
-        )
-    bd_product = st.selectbox(
-        "Product", bd_products,
-        key=f"bd_product_{bd_company}", index=None,
-        placeholder="Select Product",
-        disabled=not bd_products,
-    )
-    if bd_company and bd_product:
-        tbl = make_province_price_table(df, bd_company, bd_product)
-        price_cols = [
-            c for c in tbl.columns
-            if c not in ("CM YOY Change %", "CM MoM Change %")
-        ]
-        col_config = {
-            c: st.column_config.TextColumn(c)
-            for c in price_cols
-        }
-        col_config["CM YOY Change %"] = st.column_config.TextColumn("CM YOY Change %")
-        col_config["CM MoM Change %"] = st.column_config.TextColumn("CM MoM Change %")
-        st.dataframe(
-            tbl, use_container_width=True,
-            column_config=col_config,
-        )
-    else:
-        st.info(
-            "Select Company and Product to show the province price table"
-        )
 
 
 # === CLI Entry
