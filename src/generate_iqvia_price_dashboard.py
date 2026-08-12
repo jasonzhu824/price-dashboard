@@ -386,10 +386,10 @@ def make_table(summary_df):
 
 # === Dashboard (Streamlit)
 def _apply_danone_style():
-    """Inject Danone AMN SFE styling with a frosted-glass UI.
+    """Inject Danone AMN SFE styling with card-based layout.
 
-    Light gradient background with translucent frosted cards behind every
-    chart; plotly figures use transparent paper so the glass shows.
+    Light gradient background with solid white rounded cards behind every
+    chart; plotly figures use transparent paper so the cards show through.
     """
     st.markdown(
         f"""
@@ -402,14 +402,12 @@ def _apply_danone_style():
         [data-testid="stHeader"] {{
             background: transparent;
         }}
-        /* Frosted glass cards wrapping charts and table */
+        /* White cards wrapping charts and table */
         [data-testid="stPlotlyChart"] {{
-            background: rgba(255, 255, 255, 0.65);
-            -webkit-backdrop-filter: blur(16px) saturate(150%);
-            backdrop-filter: blur(16px) saturate(150%);
+            background: #ffffff;
             border-radius: 18px;
-            border: 1px solid rgba(255, 255, 255, 0.9);
-            box-shadow: 0 8px 32px rgba(0, 37, 119, 0.12);
+            border: 1px solid #e8edf5;
+            box-shadow: 0 8px 32px rgba(0, 37, 119, 0.10);
             padding: 14px 18px 6px 18px;
             margin-bottom: 20px;
         }}
