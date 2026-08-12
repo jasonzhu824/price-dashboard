@@ -393,76 +393,6 @@ def _make_empty_figure():
     return fig
 
 
-def make_figure_value(summary_df):
-    """Build the monthly Value bar chart.
-
-    Styling follows the Danone AMN SFE style guide (colors / font sizes).
-    """
-    if summary_df.empty:
-        return _make_empty_figure()
-
-    fig = go.Figure()
-    x = summary_df["YM_label"]
-    fig.add_trace(go.Bar(
-        x=x, y=summary_df["Value"], name="Value",
-        marker_color=COLOR_PRIMARY,
-    ))
-    fig.update_layout(
-        template="plotly_white",
-        paper_bgcolor="rgba(0,0,0,0)", plot_bgcolor="rgba(0,0,0,0)",
-        font=dict(family=FONT_FAMILY, size=15, color=COLOR_BLACK),
-        title=dict(
-            text="Monthly Value",
-            font=dict(family=FONT_FAMILY, size=24, color=COLOR_PRIMARY),
-        ),
-        xaxis=dict(title=None, tickfont=dict(size=11), gridcolor="#e6e6e6",
-                   tickangle=-45, tickmode="array",
-                   tickvals=list(x)[::3], ticktext=list(x)[::3]),
-        yaxis=dict(
-            title=dict(text="Value (CNY)", font=dict(size=15, color=COLOR_PRIMARY)),
-            gridcolor="#e6e6e6",
-        ),
-        hovermode="x unified",
-        margin=dict(l=60, r=20, t=90, b=40),
-    )
-    return fig
-
-
-def make_figure_volume(summary_df):
-    """Build the monthly Volume bar chart.
-
-    Styling follows the Danone AMN SFE style guide (colors / font sizes).
-    """
-    if summary_df.empty:
-        return _make_empty_figure()
-
-    fig = go.Figure()
-    x = summary_df["YM_label"]
-    fig.add_trace(go.Bar(
-        x=x, y=summary_df["Volume"], name="Volume",
-        marker_color=COLOR_SECONDARY,
-    ))
-    fig.update_layout(
-        template="plotly_white",
-        paper_bgcolor="rgba(0,0,0,0)", plot_bgcolor="rgba(0,0,0,0)",
-        font=dict(family=FONT_FAMILY, size=15, color=COLOR_BLACK),
-        title=dict(
-            text="Monthly Volume",
-            font=dict(family=FONT_FAMILY, size=24, color=COLOR_PRIMARY),
-        ),
-        xaxis=dict(title=None, tickfont=dict(size=11), gridcolor="#e6e6e6",
-                   tickangle=-45, tickmode="array",
-                   tickvals=list(x)[::3], ticktext=list(x)[::3]),
-        yaxis=dict(
-            title=dict(text="Volume", font=dict(size=15, color=COLOR_SECONDARY)),
-            gridcolor="#e6e6e6",
-        ),
-        hovermode="x unified",
-        margin=dict(l=60, r=20, t=90, b=40),
-    )
-    return fig
-
-
 def make_figure_price(summary_df):
     """Build the monthly Price line chart with spike marking.
 
@@ -555,34 +485,6 @@ def make_figure_price(summary_df):
     return fig
 
 
-def make_table(summary_df):
-    """Build the monthly summary table styled per the style guide."""
-    header = dict(
-        values=["Month", "Value", "Volume", "Price"],
-        fill_color=COLOR_PRIMARY,
-        font=dict(color="white", size=15, family=FONT_FAMILY),
-        align="center",
-    )
-    cells = dict(
-        values=[
-            summary_df["YM_label"],
-            summary_df["Value"],
-            summary_df["Volume"],
-            summary_df["Price"],
-        ],
-        fill_color="white",
-        font=dict(size=15, family=FONT_FAMILY, color=COLOR_BLACK),
-        align="center",
-        format=[None, ".2f", ".2f", ".2f"],
-    )
-    return go.Figure(
-        data=[go.Table(header=header, cells=cells)],
-        layout=go.Layout(
-            paper_bgcolor="rgba(0,0,0,0)",
-            margin=dict(l=10, r=10, t=10, b=10),
-            height=64 + 26 * max(len(summary_df), 1),
-        ),
-    )
 
 
 # === Dashboard (Streamlit)
@@ -686,16 +588,9 @@ def build_dashboard():
             if selected:
                 mask &= df[col_name].isin(selected)
 
-    # Summary, charts and table for the current selection
-    summary_df = make_summary_df(df, selections)
-
     # Price chart on top (full width) — one line per selected Product/Company
     price_lines_df = make_price_lines_df(df, selections)
     st.plotly_chart(make_figure_price(price_lines_df), use_container_width=True)
-
-    # Value and Volume bar charts stacked (Value on top, Volume below)
-    st.plotly_chart(make_figure_value(summary_df), use_container_width=True)
-    st.plotly_chart(make_figure_volume(summary_df), use_container_width=True)
 
     # Province Price Break Down: province × month price table
     st.markdown(
@@ -744,13 +639,6 @@ def build_dashboard():
         st.info(
             "Select Company and Product to show the province price table"
         )
-
-    st.markdown(
-        f'<h3 style="font-family:{FONT_FAMILY};font-size:24px;font-weight:bold;'
-        f'color:{COLOR_PRIMARY};">Monthly Summary</h3>',
-        unsafe_allow_html=True,
-    )
-    st.plotly_chart(make_table(summary_df), use_container_width=True)
 
 
 # === CLI Entry
