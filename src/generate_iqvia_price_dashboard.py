@@ -272,58 +272,84 @@ def make_price_lines_df(data_df, selections):
     return pd.concat(line_frames, ignore_index=True)
 
 
-def make_breakdown_lines(data_df, provinces, company, product):
-    """Build per-province monthly Price lines for one Company/Product combo.
+EXCLUDED_PROVINCES = ["其他", "EC+Pharmacy"]
 
-    Used by the Province-Product Break Down module; the selection is fully
-    independent from the main dashboard filters. Each selected province is
-    drawn as its own price line so provinces can be compared.
+
+def make_province_price_table(data_df, company, product):
+    """Build a province × month price table with CM YOY / MoM change.
+
+    Each row is a province ("其他" and "EC+Pharmacy" excluded). Monthly
+    price columns cover the full data range.  The last two columns are:
+    - CM YOY Change % (latest month vs same month last year)
+    - CM MoM Change % (latest month vs previous month)
+    The table is sorted by CM YOY Change % descending.
 
     Args:
         data_df: Full DataFrame.
-        provinces: List of selected province names.
         company: Selected company name.
         product: Selected product name.
 
     Returns:
-        DataFrame with columns YM, YM_label, Value, Volume, Price, Line
-        where Line is the province name. Value is all zero when the combo
-        has no records.
+        DataFrame indexed by province with monthly price columns and the
+        two computed metric columns.
     """
+    all_provinces = sorted(
+        p for p in data_df["Province"].dropna().unique()
+        if p not in EXCLUDED_PROVINCES
+    )
+    yms = sorted(data_df["YM"].unique())
+    latest_ym = yms[-1]
+    # YOY reference: same month, previous year (fall back to earliest month)
+    if len(yms) >= 13:
+        yoy_ym = yms[-13]
+    else:
+        yoy_ym = yms[0]
+    # MoM reference: previous month
+    mom_idx = yms.index(latest_ym) - 1
+    mom_ym = yms[mom_idx] if mom_idx >= 0 else latest_ym
+
     selections = {col: [] for col in FILTER_ORDER}
-    selections["Province"] = list(provinces)
     selections["Company"] = [company]
     selections["Product"] = [product]
-    mask = build_selection_mask(data_df, selections, FILTER_ORDER)
-    sub_df = data_df[mask]
-    full_ym = _full_ym_range(data_df)
 
-    line_frames = []
-    for prov, grp in sub_df.groupby("Province"):
-        monthly = (
-            grp.groupby("YM", as_index=False)
-            .agg(Value=("Value", "sum"), Volume=("Volume", "sum"))
-            .set_index("YM")
-            .reindex(full_ym, fill_value=0)
-            .rename_axis("YM")
-            .reset_index()
-            .assign(
-                Price=lambda x: np.where(
-                    x["Volume"] != 0,
-                    np.round(x["Value"] / x["Volume"], 4),
-                    np.nan,
-                )
-            )
-            .assign(YM_label=lambda x: x["YM"].astype(str).str.replace(
-                r"(\d{4})(\d{2})", r"\1-\2", regex=True
-            ))
-            .assign(Line=prov)
+    records = {}
+    for province in all_provinces:
+        sel = dict(selections)
+        sel["Province"] = [province]
+        s = make_summary_df(data_df, sel)
+        records[province] = s.set_index("YM")["Price"]
+
+    price_df = pd.DataFrame(records)  # index=YM (int), columns=province
+    price_df = price_df.T  # provinces as rows, months as columns
+    price_df = price_df[sorted(price_df.columns)]
+    # Format column labels as YYYY-MM
+    price_df.columns = [
+        f"{str(c)[:4]}-{str(c)[4:]}" for c in price_df.columns
+    ]
+
+    latest_label = f"{str(latest_ym)[:4]}-{str(latest_ym)[4:]}"
+    yoy_label = f"{str(yoy_ym)[:4]}-{str(yoy_ym)[4:]}"
+    mom_label = f"{str(mom_ym)[:4]}-{str(mom_ym)[4:]}"
+
+    if yoy_label in price_df.columns:
+        price_df["CM YOY Change %"] = (
+            (price_df[latest_label].astype(float)
+             / price_df[yoy_label].astype(float) - 1) * 100
         )
-        line_frames.append(monthly)
-    if not line_frames:
-        # No records for the combo: return a zero-filled skeleton line
-        return make_summary_df(data_df, selections).assign(Line="")
-    return pd.concat(line_frames, ignore_index=True)
+    else:
+        price_df["CM YOY Change %"] = np.nan
+
+    if mom_label in price_df.columns:
+        price_df["CM MoM Change %"] = (
+            (price_df[latest_label].astype(float)
+             / price_df[mom_label].astype(float) - 1) * 100
+        )
+    else:
+        price_df["CM MoM Change %"] = np.nan
+
+    return price_df.sort_values(
+        "CM YOY Change %", ascending=False, na_position="last"
+    )
 
 
 # === Chart & Table (Danone AMN SFE style)
@@ -647,31 +673,25 @@ def build_dashboard():
     st.plotly_chart(make_figure_value(summary_df), use_container_width=True)
     st.plotly_chart(make_figure_volume(summary_df), use_container_width=True)
 
-    # Province-Product Break Down: two independent single-select panels
+    # Province Price Break Down: province × month price table
     st.markdown(
         f'<h3 style="font-family:{FONT_FAMILY};font-size:24px;font-weight:bold;'
-        f'color:{COLOR_PRIMARY};">Province-Product Break Down</h3>',
+        f'color:{COLOR_PRIMARY};">Province Price Break Down</h3>',
         unsafe_allow_html=True,
     )
     st.caption(
-        "Independent filters: compare two Province/Company/Product price "
-        "trends side by side, unaffected by the filters above"
+        "Independent filters: compare two Company/Product price tables "
+        "side by side (\"其他\" and \"EC+Pharmacy\" excluded)"
     )
     bd_col_left, bd_col_right = st.columns(2)
     for bd_col, panel in ((bd_col_left, "Left"), (bd_col_right, "Right")):
         with bd_col:
             st.markdown(f"##### {panel} Panel")
-            bd_provinces = st.multiselect(
-                "Province", sorted(df["Province"].dropna().unique()),
-                key=f"bd_province_{panel}",
-                help="Select one or more provinces (one price line each)",
-            )
             bd_company = st.selectbox(
                 "Company", sorted(df["Company"].dropna().unique()),
                 key=f"bd_company_{panel}", index=None,
                 placeholder="Select Company",
             )
-            # Cascade: product options only from the selected company
             bd_products = []
             if bd_company:
                 bd_products = sorted(
@@ -684,23 +704,32 @@ def build_dashboard():
                 placeholder="Select Product",
                 disabled=not bd_products,
             )
-            if bd_provinces and bd_company and bd_product:
-                bd_lines = make_breakdown_lines(
-                    df, bd_provinces, bd_company, bd_product
+            if bd_company and bd_product:
+                tbl = make_province_price_table(
+                    df, bd_company, bd_product
                 )
-                if bd_lines["Value"].sum() == 0:
-                    st.info("No data for this combination")
-                else:
-                    bd_fig = make_figure_price(bd_lines)
-                    bd_fig.update_layout(title=dict(
-                        text=f"{bd_product} | {bd_company}",
-                        font=dict(family=FONT_FAMILY, size=24, color=COLOR_PRIMARY),
-                    ))
-                    st.plotly_chart(bd_fig, use_container_width=True)
+                price_cols = [
+                    c for c in tbl.columns
+                    if c not in ("CM YOY Change %", "CM MoM Change %")
+                ]
+                col_config = {
+                    c: st.column_config.NumberColumn(format="%.2f")
+                    for c in price_cols
+                }
+                col_config["CM YOY Change %"] = st.column_config.NumberColumn(
+                    format="+.2f%%"
+                )
+                col_config["CM MoM Change %"] = st.column_config.NumberColumn(
+                    format="+.2f%%"
+                )
+                st.dataframe(
+                    tbl, use_container_width=True,
+                    column_config=col_config,
+                )
             else:
                 st.info(
-                    "Select Province(s), Company and Product "
-                    "to show the monthly price trend"
+                    "Select Company and Product "
+                    "to show the province price table"
                 )
 
     st.markdown(

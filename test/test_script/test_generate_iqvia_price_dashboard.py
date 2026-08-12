@@ -199,39 +199,46 @@ class TestPriceLines(unittest.TestCase):
         self.assertEqual(sorted(legend_names), ["乐赋", "百普素"])
 
 
-class TestBreakDownLines(unittest.TestCase):
-    """Province-Product Break Down must draw one line per selected province."""
+class TestProvincePriceTable(unittest.TestCase):
+    """Province Price Table must exclude provinces, compute YOY/MoM, sort by YOY desc."""
 
     def setUp(self):
         self.data_df = pd.DataFrame({
-            "YM": [202301, 202301, 202302, 202302],
-            "VBP": ["GD+20"] * 4,
-            "Province": ["广东", "北京", "广东", "北京"],
-            "City": ["深圳", "北京", "深圳", "北京"],
-            "Channel": ["Hospital"] * 4,
-            "Company": ["纽迪希亚"] * 4,
-            "Tube-ONS": ["Tube"] * 4,
-            "Product": ["康全甘500ml"] * 4,
-            "Product Category": ["General"] * 4,
-            "Value": [100.0, 200.0, 150.0, 250.0],
-            "Volume": [10.0, 20.0, 15.0, 25.0],
+            "YM": [202301, 202301, 202302, 202302, 202303, 202303],
+            "Province": ["广东", "浙江", "广东", "浙江", "广东", "浙江"],
+            "Company": ["纽迪希亚"] * 6,
+            "Product": ["百普素"] * 6,
+            "VBP": ["GD+20"] * 6,
+            "City": ["深圳", "杭州", "深圳", "杭州", "深圳", "杭州"],
+            "Channel": ["Hospital"] * 6,
+            "Tube-ONS": ["Tube"] * 6,
+            "Product Category": ["General"] * 6,
+            "Value": [100.0, 50.0, 120.0, 55.0, 140.0, 45.0],
+            "Volume": [10.0, 5.0, 12.0, 5.5, 14.0, 4.5],
         })
 
-    def test_one_line_per_selected_province(self):
-        lines = module.make_breakdown_lines(
-            self.data_df, ["广东", "北京"], "纽迪希亚", "康全甘500ml"
+    def test_excluded_provinces_removed(self):
+        tbl = module.make_province_price_table(
+            self.data_df, "纽迪希亚", "百普素"
         )
-        self.assertEqual(sorted(lines["Line"].unique()), ["北京", "广东"])
-        self.assertEqual(len(lines), 4)  # 2 provinces x full month range
-        row_gd = lines[lines["Line"] == "广东"].iloc[0]
-        self.assertEqual(row_gd["Value"], 100.0)
+        self.assertNotIn("其他", tbl.index)
+        self.assertNotIn("EC+Pharmacy", tbl.index)
 
-    def test_no_data_combo_returns_zero_skeleton(self):
-        lines = module.make_breakdown_lines(
-            self.data_df, ["广东"], "雅培", "康全甘500ml"
+    def test_yoy_and_mom_columns_present(self):
+        tbl = module.make_province_price_table(
+            self.data_df, "纽迪希亚", "百普素"
         )
-        self.assertEqual(lines["Value"].sum(), 0.0)
-        self.assertEqual(list(lines["Line"].unique()), [""])
+        self.assertIn("CM YOY Change %", tbl.columns)
+        self.assertIn("CM MoM Change %", tbl.columns)
+
+    def test_sorted_by_yoy_desc(self):
+        tbl = module.make_province_price_table(
+            self.data_df, "纽迪希亚", "百普素"
+        )
+        yoy = tbl["CM YOY Change %"].dropna()
+        # pandas 2.x: use is_monotonic_increasing on reversed series
+        rev = yoy.iloc[::-1]
+        self.assertTrue(rev.is_monotonic_increasing or len(yoy) <= 1)
 
 
 if __name__ == "__main__":
