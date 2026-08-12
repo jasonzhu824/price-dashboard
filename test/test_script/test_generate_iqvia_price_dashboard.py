@@ -199,5 +199,40 @@ class TestPriceLines(unittest.TestCase):
         self.assertEqual(sorted(legend_names), ["乐赋", "百普素"])
 
 
+class TestBreakDownSummary(unittest.TestCase):
+    """Province-Product Break Down must filter by its own single selects."""
+
+    def setUp(self):
+        self.data_df = pd.DataFrame({
+            "YM": [202301, 202301, 202302],
+            "VBP": ["GD+20", "GD+20", "Independent"],
+            "Province": ["广东", "广东", "北京"],
+            "City": ["深圳", "深圳", "北京"],
+            "Channel": ["Hospital", "Hospital", "Hospital"],
+            "Company": ["纽迪希亚", "纽迪希亚", "费卡华瑞"],
+            "Tube-ONS": ["Tube", "Tube", "Tube"],
+            "Product": ["康全甘500ml", "康全甘500ml", "瑞先"],
+            "Product Category": ["General", "General", "General"],
+            "Value": [100.0, 200.0, 50.0],
+            "Volume": [10.0, 30.0, 5.0],
+        })
+
+    def test_filters_by_combo(self):
+        summary = module.make_breakdown_summary(
+            self.data_df, "广东", "纽迪希亚", "康全甘500ml"
+        )
+        row_jan = summary[summary["YM"] == 202301].iloc[0]
+        self.assertEqual(row_jan["Value"], 300.0)
+        row_feb = summary[summary["YM"] == 202302].iloc[0]
+        self.assertEqual(row_feb["Value"], 0.0)  # no record for this combo
+        self.assertTrue(np.isnan(row_feb["Price"]))
+
+    def test_no_data_combo_returns_zero_value(self):
+        summary = module.make_breakdown_summary(
+            self.data_df, "北京", "纽迪希亚", "康全甘500ml"
+        )
+        self.assertEqual(summary["Value"].sum(), 0.0)
+
+
 if __name__ == "__main__":
     unittest.main(verbosity=2)

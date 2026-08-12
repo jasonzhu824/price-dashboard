@@ -272,6 +272,28 @@ def make_price_lines_df(data_df, selections):
     return pd.concat(line_frames, ignore_index=True)
 
 
+def make_breakdown_summary(data_df, province, company, product):
+    """Build a monthly Price summary for one Province/Company/Product combo.
+
+    Used by the Province-Product Break Down module; the selection is fully
+    independent from the main dashboard filters.
+
+    Args:
+        data_df: Full DataFrame.
+        province: Selected province name.
+        company: Selected company name.
+        product: Selected product name.
+
+    Returns:
+        DataFrame with columns YM, YM_label, Value, Volume, Price.
+    """
+    selections = {col: [] for col in FILTER_ORDER}
+    selections["Province"] = [province]
+    selections["Company"] = [company]
+    selections["Product"] = [product]
+    return make_summary_df(data_df, selections)
+
+
 # === Chart & Table (Danone AMN SFE style)
 def _make_empty_figure():
     """Build an empty figure with a 'no data' annotation."""
@@ -592,6 +614,54 @@ def build_dashboard():
     # Value and Volume bar charts stacked (Value on top, Volume below)
     st.plotly_chart(make_figure_value(summary_df), use_container_width=True)
     st.plotly_chart(make_figure_volume(summary_df), use_container_width=True)
+
+    # Province-Product Break Down: two independent single-select panels
+    st.markdown(
+        f'<h3 style="font-family:{FONT_FAMILY};font-size:24px;font-weight:bold;'
+        f'color:{COLOR_PRIMARY};">Province-Product Break Down</h3>',
+        unsafe_allow_html=True,
+    )
+    st.caption(
+        "Independent filters: compare two Province/Company/Product price "
+        "trends side by side, unaffected by the filters above"
+    )
+    bd_col_left, bd_col_right = st.columns(2)
+    for bd_col, panel in ((bd_col_left, "Left"), (bd_col_right, "Right")):
+        with bd_col:
+            st.markdown(f"##### {panel} Panel")
+            bd_province = st.selectbox(
+                "Province", sorted(df["Province"].dropna().unique()),
+                key=f"bd_province_{panel}", index=None,
+                placeholder="Select Province",
+            )
+            bd_company = st.selectbox(
+                "Company", sorted(df["Company"].dropna().unique()),
+                key=f"bd_company_{panel}", index=None,
+                placeholder="Select Company",
+            )
+            bd_product = st.selectbox(
+                "Product", sorted(df["Product"].dropna().unique()),
+                key=f"bd_product_{panel}", index=None,
+                placeholder="Select Product",
+            )
+            if bd_province and bd_company and bd_product:
+                bd_summary = make_breakdown_summary(
+                    df, bd_province, bd_company, bd_product
+                )
+                if bd_summary["Value"].sum() == 0:
+                    st.info("No data for this combination")
+                else:
+                    bd_fig = make_figure_price(bd_summary)
+                    bd_fig.update_layout(title=dict(
+                        text=f"{bd_product} | {bd_province}",
+                        font=dict(family=FONT_FAMILY, size=24, color=COLOR_PRIMARY),
+                    ))
+                    st.plotly_chart(bd_fig, use_container_width=True)
+            else:
+                st.info(
+                    "Select Province, Company and Product "
+                    "to show the monthly price trend"
+                )
 
     st.markdown(
         f'<h3 style="font-family:{FONT_FAMILY};font-size:24px;font-weight:bold;'
