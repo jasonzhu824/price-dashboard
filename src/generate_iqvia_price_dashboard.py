@@ -272,26 +272,58 @@ def make_price_lines_df(data_df, selections):
     return pd.concat(line_frames, ignore_index=True)
 
 
-def make_breakdown_summary(data_df, province, company, product):
-    """Build a monthly Price summary for one Province/Company/Product combo.
+def make_breakdown_lines(data_df, provinces, company, product):
+    """Build per-province monthly Price lines for one Company/Product combo.
 
     Used by the Province-Product Break Down module; the selection is fully
-    independent from the main dashboard filters.
+    independent from the main dashboard filters. Each selected province is
+    drawn as its own price line so provinces can be compared.
 
     Args:
         data_df: Full DataFrame.
-        province: Selected province name.
+        provinces: List of selected province names.
         company: Selected company name.
         product: Selected product name.
 
     Returns:
-        DataFrame with columns YM, YM_label, Value, Volume, Price.
+        DataFrame with columns YM, YM_label, Value, Volume, Price, Line
+        where Line is the province name. Value is all zero when the combo
+        has no records.
     """
     selections = {col: [] for col in FILTER_ORDER}
-    selections["Province"] = [province]
+    selections["Province"] = list(provinces)
     selections["Company"] = [company]
     selections["Product"] = [product]
-    return make_summary_df(data_df, selections)
+    mask = build_selection_mask(data_df, selections, FILTER_ORDER)
+    sub_df = data_df[mask]
+    full_ym = _full_ym_range(data_df)
+
+    line_frames = []
+    for prov, grp in sub_df.groupby("Province"):
+        monthly = (
+            grp.groupby("YM", as_index=False)
+            .agg(Value=("Value", "sum"), Volume=("Volume", "sum"))
+            .set_index("YM")
+            .reindex(full_ym, fill_value=0)
+            .rename_axis("YM")
+            .reset_index()
+            .assign(
+                Price=lambda x: np.where(
+                    x["Volume"] != 0,
+                    np.round(x["Value"] / x["Volume"], 4),
+                    np.nan,
+                )
+            )
+            .assign(YM_label=lambda x: x["YM"].astype(str).str.replace(
+                r"(\d{4})(\d{2})", r"\1-\2", regex=True
+            ))
+            .assign(Line=prov)
+        )
+        line_frames.append(monthly)
+    if not line_frames:
+        # No records for the combo: return a zero-filled skeleton line
+        return make_summary_df(data_df, selections).assign(Line="")
+    return pd.concat(line_frames, ignore_index=True)
 
 
 # === Chart & Table (Danone AMN SFE style)
@@ -629,37 +661,45 @@ def build_dashboard():
     for bd_col, panel in ((bd_col_left, "Left"), (bd_col_right, "Right")):
         with bd_col:
             st.markdown(f"##### {panel} Panel")
-            bd_province = st.selectbox(
+            bd_provinces = st.multiselect(
                 "Province", sorted(df["Province"].dropna().unique()),
-                key=f"bd_province_{panel}", index=None,
-                placeholder="Select Province",
+                key=f"bd_province_{panel}",
+                help="Select one or more provinces (one price line each)",
             )
             bd_company = st.selectbox(
                 "Company", sorted(df["Company"].dropna().unique()),
                 key=f"bd_company_{panel}", index=None,
                 placeholder="Select Company",
             )
-            bd_product = st.selectbox(
-                "Product", sorted(df["Product"].dropna().unique()),
-                key=f"bd_product_{panel}", index=None,
-                placeholder="Select Product",
-            )
-            if bd_province and bd_company and bd_product:
-                bd_summary = make_breakdown_summary(
-                    df, bd_province, bd_company, bd_product
+            # Cascade: product options only from the selected company
+            bd_products = []
+            if bd_company:
+                bd_products = sorted(
+                    df.loc[df["Company"] == bd_company, "Product"]
+                    .dropna().unique()
                 )
-                if bd_summary["Value"].sum() == 0:
+            bd_product = st.selectbox(
+                "Product", bd_products,
+                key=f"bd_product_{panel}_{bd_company}", index=None,
+                placeholder="Select Product",
+                disabled=not bd_products,
+            )
+            if bd_provinces and bd_company and bd_product:
+                bd_lines = make_breakdown_lines(
+                    df, bd_provinces, bd_company, bd_product
+                )
+                if bd_lines["Value"].sum() == 0:
                     st.info("No data for this combination")
                 else:
-                    bd_fig = make_figure_price(bd_summary)
+                    bd_fig = make_figure_price(bd_lines)
                     bd_fig.update_layout(title=dict(
-                        text=f"{bd_product} | {bd_province}",
+                        text=f"{bd_product} | {bd_company}",
                         font=dict(family=FONT_FAMILY, size=24, color=COLOR_PRIMARY),
                     ))
                     st.plotly_chart(bd_fig, use_container_width=True)
             else:
                 st.info(
-                    "Select Province, Company and Product "
+                    "Select Province(s), Company and Product "
                     "to show the monthly price trend"
                 )
 

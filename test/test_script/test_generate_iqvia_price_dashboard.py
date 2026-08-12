@@ -199,39 +199,39 @@ class TestPriceLines(unittest.TestCase):
         self.assertEqual(sorted(legend_names), ["乐赋", "百普素"])
 
 
-class TestBreakDownSummary(unittest.TestCase):
-    """Province-Product Break Down must filter by its own single selects."""
+class TestBreakDownLines(unittest.TestCase):
+    """Province-Product Break Down must draw one line per selected province."""
 
     def setUp(self):
         self.data_df = pd.DataFrame({
-            "YM": [202301, 202301, 202302],
-            "VBP": ["GD+20", "GD+20", "Independent"],
-            "Province": ["广东", "广东", "北京"],
-            "City": ["深圳", "深圳", "北京"],
-            "Channel": ["Hospital", "Hospital", "Hospital"],
-            "Company": ["纽迪希亚", "纽迪希亚", "费卡华瑞"],
-            "Tube-ONS": ["Tube", "Tube", "Tube"],
-            "Product": ["康全甘500ml", "康全甘500ml", "瑞先"],
-            "Product Category": ["General", "General", "General"],
-            "Value": [100.0, 200.0, 50.0],
-            "Volume": [10.0, 30.0, 5.0],
+            "YM": [202301, 202301, 202302, 202302],
+            "VBP": ["GD+20"] * 4,
+            "Province": ["广东", "北京", "广东", "北京"],
+            "City": ["深圳", "北京", "深圳", "北京"],
+            "Channel": ["Hospital"] * 4,
+            "Company": ["纽迪希亚"] * 4,
+            "Tube-ONS": ["Tube"] * 4,
+            "Product": ["康全甘500ml"] * 4,
+            "Product Category": ["General"] * 4,
+            "Value": [100.0, 200.0, 150.0, 250.0],
+            "Volume": [10.0, 20.0, 15.0, 25.0],
         })
 
-    def test_filters_by_combo(self):
-        summary = module.make_breakdown_summary(
-            self.data_df, "广东", "纽迪希亚", "康全甘500ml"
+    def test_one_line_per_selected_province(self):
+        lines = module.make_breakdown_lines(
+            self.data_df, ["广东", "北京"], "纽迪希亚", "康全甘500ml"
         )
-        row_jan = summary[summary["YM"] == 202301].iloc[0]
-        self.assertEqual(row_jan["Value"], 300.0)
-        row_feb = summary[summary["YM"] == 202302].iloc[0]
-        self.assertEqual(row_feb["Value"], 0.0)  # no record for this combo
-        self.assertTrue(np.isnan(row_feb["Price"]))
+        self.assertEqual(sorted(lines["Line"].unique()), ["北京", "广东"])
+        self.assertEqual(len(lines), 4)  # 2 provinces x full month range
+        row_gd = lines[lines["Line"] == "广东"].iloc[0]
+        self.assertEqual(row_gd["Value"], 100.0)
 
-    def test_no_data_combo_returns_zero_value(self):
-        summary = module.make_breakdown_summary(
-            self.data_df, "北京", "纽迪希亚", "康全甘500ml"
+    def test_no_data_combo_returns_zero_skeleton(self):
+        lines = module.make_breakdown_lines(
+            self.data_df, ["广东"], "雅培", "康全甘500ml"
         )
-        self.assertEqual(summary["Value"].sum(), 0.0)
+        self.assertEqual(lines["Value"].sum(), 0.0)
+        self.assertEqual(list(lines["Line"].unique()), [""])
 
 
 if __name__ == "__main__":
