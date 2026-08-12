@@ -194,7 +194,11 @@ def make_summary_df(data_df, selections):
         .rename_axis("YM")
         .reset_index()
         .assign(
-            Price=lambda x: np.where(x["Volume"] != 0, x["Value"] / x["Volume"], np.nan)
+            Price=lambda x: np.where(
+                x["Volume"] != 0,
+                np.round(x["Value"] / x["Volume"], 4),
+                np.nan,
+            )
         )
         .assign(YM_label=lambda x: x["YM"].astype(str).str.replace(
             r"(\d{4})(\d{2})", r"\1-\2", regex=True
