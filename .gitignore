@@ -1,0 +1,16 @@
+# Python
+__pycache__/
+*.pyc
+*.pyo
+.venv/
+venv/
+
+# Streamlit
+.streamlit/
+
+# Logs & temp
+*.log
+.DS_Store
+
+# Local tool config
+.cpolar/
