@@ -300,6 +300,8 @@ def make_figure_price(summary_df):
 
     Months whose month-over-month Price change exceeds
     PRICE_CHANGE_THRESHOLD_PCT (absolute value) are marked in red.
+    The legend sits horizontally below the plot so long series names
+    (e.g. "MoM Change > 5%") are never truncated.
     Styling follows the Danone AMN SFE style guide (colors / font sizes).
     """
     if summary_df.empty:
@@ -339,8 +341,15 @@ def make_figure_price(summary_df):
             title=dict(text="Price (CNY/Unit)", font=dict(size=14, color=COLOR_TERTIARY)),
             gridcolor="#e6e6e6",
         ),
+        # Horizontal legend below the plot avoids right-edge truncation
+        legend=dict(
+            orientation="h",
+            yanchor="top", y=-0.28,
+            xanchor="center", x=0.5,
+            font=dict(size=12),
+        ),
         hovermode="x unified",
-        margin=dict(l=60, r=60, t=80, b=40),
+        margin=dict(l=60, r=60, t=80, b=90),
     )
     return fig
 
