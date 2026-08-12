@@ -67,7 +67,7 @@ COLOR_BLACK = "#000000"
 FONT_FAMILY = "Danone One Condensed, Arial, sans-serif"
 
 # Price spike marking threshold (month-over-month change, in percent)
-PRICE_CHANGE_THRESHOLD_PCT = 10.0
+PRICE_CHANGE_THRESHOLD_PCT = 5.0
 
 # Data cache (module-level global)
 _data_cache = None

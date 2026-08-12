@@ -134,7 +134,7 @@ class TestPriceSpikeMarking(unittest.TestCase):
             "YM_label": ["2023-01", "2023-02", "2023-03"],
             "Value": [100.0, 100.0, 100.0],
             "Volume": [10.0, 10.0, 10.0],
-            "Price": [10.0, 12.0, 12.1],  # +20% spike, then +0.8% normal
+            "Price": [10.0, 10.6, 11.0],  # +6% spike, then +3.8% normal
         })
 
     def test_spike_points_marked_red(self):
@@ -144,11 +144,11 @@ class TestPriceSpikeMarking(unittest.TestCase):
         self.assertEqual(spike_trace.line.color, module.COLOR_DOWN)
         spike_y = list(spike_trace.y)
         self.assertTrue(np.isnan(spike_y[0]))      # first month: no baseline
-        self.assertAlmostEqual(spike_y[1], 12.0)   # +20% change -> marked
-        self.assertTrue(np.isnan(spike_y[2]))      # +0.8% change -> not marked
+        self.assertAlmostEqual(spike_y[1], 10.6)   # +6% change -> marked
+        self.assertTrue(np.isnan(spike_y[2]))      # +3.8% change -> not marked
 
     def test_no_spike_all_flat(self):
-        flat_df = self.summary_df.assign(Price=[10.0, 10.5, 10.6])  # all < 10%
+        flat_df = self.summary_df.assign(Price=[10.0, 10.4, 10.8])  # all < 5%
         fig = module.make_figure_price(flat_df)
         spike_y = list(fig.data[1].y)
         self.assertTrue(all(np.isnan(v) for v in spike_y))
