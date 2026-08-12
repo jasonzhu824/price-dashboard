@@ -605,11 +605,31 @@ def build_dashboard():
         unsafe_allow_html=True,
     )
     st.caption(
-        "All provinces (\"其他\" and \"EC+Pharmacy\" excluded), "
-        "aggregated across all Companies and Products. "
+        "Filter by Company and Product, or leave empty to see all provinces. "
+        "\"其他\" and \"EC+Pharmacy\" excluded. "
         "Sorted by CM YOY Change % descending."
     )
-    tbl = make_province_price_table(df)
+    bd_company = st.selectbox(
+        "Company", sorted(df["Company"].dropna().unique()),
+        key="bd_company", index=None,
+        placeholder="Select Company",
+    )
+    bd_products = []
+    if bd_company:
+        bd_products = sorted(
+            df.loc[df["Company"] == bd_company, "Product"]
+            .dropna().unique()
+        )
+    bd_product = st.selectbox(
+        "Product", bd_products,
+        key=f"bd_product_{bd_company}", index=None,
+        placeholder="Select Product",
+        disabled=not bd_products,
+    )
+    if bd_company and bd_product:
+        tbl = make_province_price_table(df, bd_company, bd_product)
+    else:
+        tbl = make_province_price_table(df)  # show all when no filter
     price_cols = [
         c for c in tbl.columns
         if c not in ("CM YOY Change %", "CM MoM Change %")
