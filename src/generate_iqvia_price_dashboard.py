@@ -350,6 +350,13 @@ def make_province_price_table(data_df, company, product):
     price_df = price_df.sort_values(
         "CM YOY Change %", ascending=False, na_position="last"
     )
+    # Format price columns as strings after sorting, avoids scientific notation in UI
+    price_cols = [c for c in price_df.columns
+                  if c not in ("CM YOY Change %", "CM MoM Change %")]
+    for col in price_cols:
+        price_df[col] = price_df[col].apply(
+            lambda v: f"{v:.2f}" if pd.notna(v) else "N/A"
+        )
     # Format for display after sorting (string formatting breaks ordering)
     price_df["CM YOY Change %"] = price_df["CM YOY Change %"].apply(_fmt_pct)
     price_df["CM MoM Change %"] = price_df["CM MoM Change %"].apply(_fmt_pct)
@@ -724,7 +731,7 @@ def build_dashboard():
             if c not in ("CM YOY Change %", "CM MoM Change %")
         ]
         col_config = {
-            c: st.column_config.NumberColumn(format=".2f")
+            c: st.column_config.TextColumn(c)
             for c in price_cols
         }
         col_config["CM YOY Change %"] = st.column_config.TextColumn("CM YOY Change %")
