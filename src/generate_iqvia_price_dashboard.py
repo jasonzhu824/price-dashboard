@@ -404,6 +404,12 @@ def _apply_danone_style():
             padding: 14px 18px 6px 18px;
             margin-bottom: 20px;
         }}
+        /* Center content with a max width for 16:9 screens */
+        .block-container {{
+            max-width: 1560px;
+            padding-top: 2rem;
+            padding-bottom: 3rem;
+        }}
         /* Headings in Danone primary blue */
         h1, h2, h3, h5 {{
             color: {COLOR_PRIMARY};
@@ -433,6 +439,11 @@ def _apply_danone_style():
 
 def build_dashboard():
     """Build and display the interactive dashboard (streamlit + plotly)."""
+    st.set_page_config(
+        page_title="IQVIA Price Dashboard",
+        layout="wide",
+        initial_sidebar_state="collapsed",
+    )
     _apply_danone_style()
     st.markdown(
         f'<h1 style="color:{COLOR_PRIMARY};font-family:{FONT_FAMILY};'
