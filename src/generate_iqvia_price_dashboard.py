@@ -347,9 +347,26 @@ def make_province_price_table(data_df, company, product):
     else:
         price_df["CM MoM Change %"] = np.nan
 
-    return price_df.sort_values(
+    price_df = price_df.sort_values(
         "CM YOY Change %", ascending=False, na_position="last"
     )
+    # Format for display after sorting (string formatting breaks ordering)
+    price_df["CM YOY Change %"] = price_df["CM YOY Change %"].apply(_fmt_pct)
+    price_df["CM MoM Change %"] = price_df["CM MoM Change %"].apply(_fmt_pct)
+    return price_df
+
+
+def _fmt_pct(val):
+    """Format a percentage value for the province price table.
+
+    Values below 0.01% in absolute terms are shown as "<0.01%" to avoid
+    cluttering the table with near-zero figures.  NaN/None becomes "N/A".
+    """
+    if pd.isna(val):
+        return "N/A"
+    if abs(val) < 0.01:
+        return "<0.01%"
+    return f"{val:+.2f}%"
 
 
 # === Chart & Table (Danone AMN SFE style)
@@ -680,57 +697,46 @@ def build_dashboard():
         unsafe_allow_html=True,
     )
     st.caption(
-        "Independent filters: compare two Company/Product price tables "
-        "side by side (\"其他\" and \"EC+Pharmacy\" excluded)"
+        "Select Company and Product to view province-level monthly price "
+        "table (\"其他\" and \"EC+Pharmacy\" excluded)"
     )
-    bd_col_left, bd_col_right = st.columns(2)
-    for bd_col, panel in ((bd_col_left, "Left"), (bd_col_right, "Right")):
-        with bd_col:
-            st.markdown(f"##### {panel} Panel")
-            bd_company = st.selectbox(
-                "Company", sorted(df["Company"].dropna().unique()),
-                key=f"bd_company_{panel}", index=None,
-                placeholder="Select Company",
-            )
-            bd_products = []
-            if bd_company:
-                bd_products = sorted(
-                    df.loc[df["Company"] == bd_company, "Product"]
-                    .dropna().unique()
-                )
-            bd_product = st.selectbox(
-                "Product", bd_products,
-                key=f"bd_product_{panel}_{bd_company}", index=None,
-                placeholder="Select Product",
-                disabled=not bd_products,
-            )
-            if bd_company and bd_product:
-                tbl = make_province_price_table(
-                    df, bd_company, bd_product
-                )
-                price_cols = [
-                    c for c in tbl.columns
-                    if c not in ("CM YOY Change %", "CM MoM Change %")
-                ]
-                col_config = {
-                    c: st.column_config.NumberColumn(format="%.2f")
-                    for c in price_cols
-                }
-                col_config["CM YOY Change %"] = st.column_config.NumberColumn(
-                    format="+.2f%%"
-                )
-                col_config["CM MoM Change %"] = st.column_config.NumberColumn(
-                    format="+.2f%%"
-                )
-                st.dataframe(
-                    tbl, use_container_width=True,
-                    column_config=col_config,
-                )
-            else:
-                st.info(
-                    "Select Company and Product "
-                    "to show the province price table"
-                )
+    bd_company = st.selectbox(
+        "Company", sorted(df["Company"].dropna().unique()),
+        key="bd_company", index=None,
+        placeholder="Select Company",
+    )
+    bd_products = []
+    if bd_company:
+        bd_products = sorted(
+            df.loc[df["Company"] == bd_company, "Product"]
+            .dropna().unique()
+        )
+    bd_product = st.selectbox(
+        "Product", bd_products,
+        key=f"bd_product_{bd_company}", index=None,
+        placeholder="Select Product",
+        disabled=not bd_products,
+    )
+    if bd_company and bd_product:
+        tbl = make_province_price_table(df, bd_company, bd_product)
+        price_cols = [
+            c for c in tbl.columns
+            if c not in ("CM YOY Change %", "CM MoM Change %")
+        ]
+        col_config = {
+            c: st.column_config.NumberColumn(format=".2f")
+            for c in price_cols
+        }
+        col_config["CM YOY Change %"] = st.column_config.TextColumn("CM YOY Change %")
+        col_config["CM MoM Change %"] = st.column_config.TextColumn("CM MoM Change %")
+        st.dataframe(
+            tbl, use_container_width=True,
+            column_config=col_config,
+        )
+    else:
+        st.info(
+            "Select Company and Product to show the province price table"
+        )
 
     st.markdown(
         f'<h3 style="font-family:{FONT_FAMILY};font-size:24px;font-weight:bold;'

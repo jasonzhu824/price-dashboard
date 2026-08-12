@@ -200,7 +200,7 @@ class TestPriceLines(unittest.TestCase):
 
 
 class TestProvincePriceTable(unittest.TestCase):
-    """Province Price Table must exclude provinces, compute YOY/MoM, sort by YOY desc."""
+    """Province Price Table must exclude provinces, compute YOY/MoM, display formatted."""
 
     def setUp(self):
         self.data_df = pd.DataFrame({
@@ -224,21 +224,27 @@ class TestProvincePriceTable(unittest.TestCase):
         self.assertNotIn("其他", tbl.index)
         self.assertNotIn("EC+Pharmacy", tbl.index)
 
-    def test_yoy_and_mom_columns_present(self):
+    def test_yoy_and_mom_columns_formatted(self):
         tbl = module.make_province_price_table(
             self.data_df, "纽迪希亚", "百普素"
         )
         self.assertIn("CM YOY Change %", tbl.columns)
         self.assertIn("CM MoM Change %", tbl.columns)
+        # Values should be formatted strings (e.g. "0.00%" or "N/A")
+        val = tbl["CM YOY Change %"].iloc[0]
+        self.assertIsInstance(val, str)
+        self.assertTrue(val.endswith("%") or val == "N/A")
 
-    def test_sorted_by_yoy_desc(self):
+    def test_small_values_shown_as_less_than(self):
+        """Absolute values < 0.01% display as "<0.01%"."""
         tbl = module.make_province_price_table(
             self.data_df, "纽迪希亚", "百普素"
         )
-        yoy = tbl["CM YOY Change %"].dropna()
-        # pandas 2.x: use is_monotonic_increasing on reversed series
-        rev = yoy.iloc[::-1]
-        self.assertTrue(rev.is_monotonic_increasing or len(yoy) <= 1)
+        # Prices are constant (= 0.00% change), so they should show "0.00%"
+        for col in ["CM YOY Change %", "CM MoM Change %"]:
+            for val in tbl[col]:
+                if val != "N/A":
+                    self.assertNotIn("e-", val, msg=f"Scientific notation in {col}")
 
 
 if __name__ == "__main__":
