@@ -1,10 +1,10 @@
 """
-test_generate_iqvia_price_flat_file.py
+test_generate_iqvia_price_dashboard.py
 ======================================
-Unit tests for generate_iqvia_price_flat_file.py.
+Unit tests for generate_iqvia_price_dashboard.py.
 
 === Run
-    python test/test_script/test_generate_iqvia_price_flat_file.py
+    python test/test_script/test_generate_iqvia_price_dashboard.py
 
 === Coverage
 - Column rename map (standardized display names)
@@ -25,7 +25,7 @@ SCRIPT_DIR = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__f
 SRC_DIR = os.path.join(SCRIPT_DIR, "src")
 sys.path.insert(0, SRC_DIR)
 
-import generate_iqvia_price_flat_file as module  # noqa: E402
+import generate_iqvia_price_dashboard as module  # noqa: E402
 
 
 class TestRenameMap(unittest.TestCase):

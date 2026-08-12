@@ -1,14 +1,14 @@
 """
-generate_iqvia_price_flat_file.py
+generate_iqvia_price_dashboard.py
 =================================
 Generate an IQVIA price flat file (Price = Value / Volume) and build an
 interactive Danone-styled dashboard with Streamlit + plotly.
 
 === Usage
 - Generate flat file only:
-    python src/generate_iqvia_price_flat_file.py --generate
+    python src/generate_iqvia_price_dashboard.py --generate
 - Launch dashboard (streamlit):
-    streamlit run src/generate_iqvia_price_flat_file.py
+    streamlit run src/generate_iqvia_price_dashboard.py
 
 === Data Source
 - Raw:      data/raw/MS Tracking DB_2301-2605.xlsx (sheet: DB)
@@ -219,6 +219,7 @@ def _make_empty_figure():
     )
     fig.update_layout(
         xaxis=dict(visible=False), yaxis=dict(visible=False),
+        paper_bgcolor="rgba(0,0,0,0)", plot_bgcolor="rgba(0,0,0,0)",
         margin=dict(l=40, r=40, t=60, b=40),
     )
     return fig
@@ -240,6 +241,7 @@ def make_figure_value(summary_df):
     ))
     fig.update_layout(
         template="plotly_white",
+        paper_bgcolor="rgba(0,0,0,0)", plot_bgcolor="rgba(0,0,0,0)",
         font=dict(family=FONT_FAMILY, size=14, color=COLOR_BLACK),
         title=dict(
             text="Monthly Value",
@@ -274,6 +276,7 @@ def make_figure_volume(summary_df):
     ))
     fig.update_layout(
         template="plotly_white",
+        paper_bgcolor="rgba(0,0,0,0)", plot_bgcolor="rgba(0,0,0,0)",
         font=dict(family=FONT_FAMILY, size=14, color=COLOR_BLACK),
         title=dict(
             text="Monthly Volume",
@@ -323,6 +326,7 @@ def make_figure_price(summary_df):
     ))
     fig.update_layout(
         template="plotly_white",
+        paper_bgcolor="rgba(0,0,0,0)", plot_bgcolor="rgba(0,0,0,0)",
         font=dict(family=FONT_FAMILY, size=14, color=COLOR_BLACK),
         title=dict(
             text="Monthly Price",
@@ -364,6 +368,7 @@ def make_table(summary_df):
     return go.Figure(
         data=[go.Table(header=header, cells=cells)],
         layout=go.Layout(
+            paper_bgcolor="rgba(0,0,0,0)",
             margin=dict(l=10, r=10, t=10, b=10),
             height=60 + 24 * max(len(summary_df), 1),
         ),
@@ -372,19 +377,51 @@ def make_table(summary_df):
 
 # === Dashboard (Streamlit)
 def _apply_danone_style():
-    """Inject Danone AMN SFE styling (colors / fonts) into the Streamlit page."""
+    """Inject Danone AMN SFE styling with a frosted-glass UI.
+
+    Deep blue gradient background with translucent frosted cards behind
+    every chart; plotly figures use transparent paper so the glass shows.
+    """
     st.markdown(
         f"""
         <style>
-        h1, h2, h3 {{
-            color: {COLOR_PRIMARY};
+        /* Deep blue gradient background (Danone palette) */
+        [data-testid="stAppViewContainer"] {{
+            background: linear-gradient(135deg, #0b1a45 0%, #002577 45%,
+                                        #0a4f9e 82%, #00acec 135%);
+            background-attachment: fixed;
+        }}
+        [data-testid="stHeader"] {{
+            background: transparent;
+        }}
+        /* Frosted glass cards wrapping charts and table */
+        [data-testid="stPlotlyChart"] {{
+            background: rgba(255, 255, 255, 0.55);
+            -webkit-backdrop-filter: blur(16px) saturate(150%);
+            backdrop-filter: blur(16px) saturate(150%);
+            border-radius: 18px;
+            border: 1px solid rgba(255, 255, 255, 0.45);
+            box-shadow: 0 12px 40px rgba(0, 0, 0, 0.35);
+            padding: 14px 18px 6px 18px;
+            margin-bottom: 20px;
+        }}
+        /* Headings in white on the dark background */
+        h1, h2, h3, h5 {{
+            color: #ffffff;
             font-family: {FONT_FAMILY};
             font-weight: bold;
         }}
+        /* Filter labels keep the Danone accent orange */
         .stMultiSelect > label {{
             color: {COLOR_ACCENT};
             font-weight: bold;
             font-family: {FONT_FAMILY};
+        }}
+        /* Frosted select widgets */
+        [data-baseweb="select"] > div {{
+            background: rgba(255, 255, 255, 0.85);
+            border-radius: 12px;
+            border: 1px solid rgba(255, 255, 255, 0.6);
         }}
         .streamlit-expanderHeader {{
             font-family: {FONT_FAMILY};
@@ -399,12 +436,12 @@ def build_dashboard():
     """Build and display the interactive dashboard (streamlit + plotly)."""
     _apply_danone_style()
     st.markdown(
-        f'<h1 style="color:{COLOR_PRIMARY};font-family:{FONT_FAMILY};'
+        f'<h1 style="color:#ffffff;font-family:{FONT_FAMILY};'
         f'font-size:20pt;font-weight:bold;margin:0;">IQVIA Price Dashboard</h1>',
         unsafe_allow_html=True,
     )
     st.markdown(
-        f'<p style="font-size:10pt;font-style:italic;color:{COLOR_BLACK};">'
+        f'<p style="font-size:10pt;font-style:italic;color:rgba(255,255,255,0.85);">'
         f'Source: MS Tracking DB_2301-2605 | Price = Value / Volume | 2023 - 2026</p>',
         unsafe_allow_html=True,
     )
@@ -438,16 +475,13 @@ def build_dashboard():
     # Price chart on top (full width)
     st.plotly_chart(make_figure_price(summary_df), use_container_width=True)
 
-    # Value and Volume bar charts side by side
-    col_left, col_right = st.columns(2)
-    with col_left:
-        st.plotly_chart(make_figure_value(summary_df), use_container_width=True)
-    with col_right:
-        st.plotly_chart(make_figure_volume(summary_df), use_container_width=True)
+    # Value and Volume bar charts stacked (Value on top, Volume below)
+    st.plotly_chart(make_figure_value(summary_df), use_container_width=True)
+    st.plotly_chart(make_figure_volume(summary_df), use_container_width=True)
 
     st.markdown(
         f'<h3 style="font-family:{FONT_FAMILY};font-size:20px;font-weight:bold;'
-        f'color:{COLOR_PRIMARY};">Monthly Summary</h3>',
+        f'color:#ffffff;">Monthly Summary</h3>',
         unsafe_allow_html=True,
     )
     st.plotly_chart(make_table(summary_df), use_container_width=True)
