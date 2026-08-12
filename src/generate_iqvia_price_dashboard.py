@@ -379,16 +379,15 @@ def make_table(summary_df):
 def _apply_danone_style():
     """Inject Danone AMN SFE styling with a frosted-glass UI.
 
-    Deep blue gradient background with translucent frosted cards behind
-    every chart; plotly figures use transparent paper so the glass shows.
+    Light gradient background with translucent frosted cards behind every
+    chart; plotly figures use transparent paper so the glass shows.
     """
     st.markdown(
         f"""
         <style>
-        /* Deep blue gradient background (Danone palette) */
+        /* Light gradient background */
         [data-testid="stAppViewContainer"] {{
-            background: linear-gradient(135deg, #0b1a45 0%, #002577 45%,
-                                        #0a4f9e 82%, #00acec 135%);
+            background: linear-gradient(135deg, #ffffff 0%, #f0f4fa 60%, #e3ecf7 100%);
             background-attachment: fixed;
         }}
         [data-testid="stHeader"] {{
@@ -396,18 +395,18 @@ def _apply_danone_style():
         }}
         /* Frosted glass cards wrapping charts and table */
         [data-testid="stPlotlyChart"] {{
-            background: rgba(255, 255, 255, 0.55);
+            background: rgba(255, 255, 255, 0.65);
             -webkit-backdrop-filter: blur(16px) saturate(150%);
             backdrop-filter: blur(16px) saturate(150%);
             border-radius: 18px;
-            border: 1px solid rgba(255, 255, 255, 0.45);
-            box-shadow: 0 12px 40px rgba(0, 0, 0, 0.35);
+            border: 1px solid rgba(255, 255, 255, 0.9);
+            box-shadow: 0 8px 32px rgba(0, 37, 119, 0.12);
             padding: 14px 18px 6px 18px;
             margin-bottom: 20px;
         }}
-        /* Headings in white on the dark background */
+        /* Headings in Danone primary blue */
         h1, h2, h3, h5 {{
-            color: #ffffff;
+            color: {COLOR_PRIMARY};
             font-family: {FONT_FAMILY};
             font-weight: bold;
         }}
@@ -421,7 +420,7 @@ def _apply_danone_style():
         [data-baseweb="select"] > div {{
             background: rgba(255, 255, 255, 0.85);
             border-radius: 12px;
-            border: 1px solid rgba(255, 255, 255, 0.6);
+            border: 1px solid rgba(0, 37, 119, 0.15);
         }}
         .streamlit-expanderHeader {{
             font-family: {FONT_FAMILY};
@@ -436,12 +435,12 @@ def build_dashboard():
     """Build and display the interactive dashboard (streamlit + plotly)."""
     _apply_danone_style()
     st.markdown(
-        f'<h1 style="color:#ffffff;font-family:{FONT_FAMILY};'
+        f'<h1 style="color:{COLOR_PRIMARY};font-family:{FONT_FAMILY};'
         f'font-size:20pt;font-weight:bold;margin:0;">IQVIA Price Dashboard</h1>',
         unsafe_allow_html=True,
     )
     st.markdown(
-        f'<p style="font-size:10pt;font-style:italic;color:rgba(255,255,255,0.85);">'
+        f'<p style="font-size:10pt;font-style:italic;color:#5a6b8c;">'
         f'Source: MS Tracking DB_2301-2605 | Price = Value / Volume | 2023 - 2026</p>',
         unsafe_allow_html=True,
     )
@@ -481,7 +480,7 @@ def build_dashboard():
 
     st.markdown(
         f'<h3 style="font-family:{FONT_FAMILY};font-size:20px;font-weight:bold;'
-        f'color:#ffffff;">Monthly Summary</h3>',
+        f'color:{COLOR_PRIMARY};">Monthly Summary</h3>',
         unsafe_allow_html=True,
     )
     st.plotly_chart(make_table(summary_df), use_container_width=True)
