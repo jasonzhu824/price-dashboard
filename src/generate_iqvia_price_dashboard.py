@@ -580,12 +580,21 @@ def _apply_danone_style():
         h5 {{
             font-size: 17px;
         }}
-        /* Filter labels keep the Danone accent orange */
-        .stMultiSelect > label {{
-            color: {COLOR_ACCENT};
+        /* Filter labels in Danone secondary blue */
+        .stMultiSelect > label,
+        .stSelectbox > label {{
+            color: {COLOR_SECONDARY};
             font-weight: bold;
             font-family: {FONT_FAMILY};
             font-size: 15px;
+        }}
+        /* Selected-value tag in Danone tertiary blue */
+        [data-baseweb="tag"] {{
+            background-color: {COLOR_TERTIARY} !important;
+        }}
+        [data-baseweb="tag"] span,
+        [data-baseweb="tag"] svg {{
+            color: #ffffff !important;
         }}
         /* Frosted select widgets */
         [data-baseweb="select"] > div {{
@@ -690,7 +699,6 @@ def build_dashboard():
         unsafe_allow_html=True,
     )
     # Cascade filters in strict order; empty selection = all values
-    st.markdown("##### Filters")
     selections = {}
     mask = pd.Series(True, index=df.index)
     cols = st.columns(4)
