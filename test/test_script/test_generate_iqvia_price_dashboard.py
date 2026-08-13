@@ -198,6 +198,16 @@ class TestPriceLines(unittest.TestCase):
         legend_names = [t.name for t in fig.data if t.showlegend is not False]
         self.assertEqual(sorted(legend_names), ["乐赋", "百普素"])
 
+    def test_spike_trace_links_to_main_line_via_legendgroup(self):
+        """Clicking a legend item must hide that line's spike markers too."""
+        self.filters["Product"] = ["百普素", "乐赋"]
+        lines_df = module.make_price_lines_df(self.data_df, self.filters)
+        fig = module.make_figure_price(lines_df)
+        # main trace i and its spike trace i+1 share the same legendgroup
+        for i in range(0, len(fig.data), 2):
+            self.assertEqual(fig.data[i].legendgroup, fig.data[i + 1].legendgroup)
+            self.assertIsNotNone(fig.data[i].legendgroup)
+
 
 class TestProvincePriceTable(unittest.TestCase):
     """Province Price Table: YOY/MoM first, optional filter, all rows shown."""

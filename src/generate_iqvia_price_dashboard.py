@@ -453,6 +453,7 @@ def make_figure_price(summary_df):
                 mode="lines+markers",
                 line=dict(color=color, width=3),
                 marker=dict(size=6, color=color),
+                legendgroup=line,
             ))
             # Mark |MoM change| above the threshold in red per line
             pct_change = price.pct_change() * 100
@@ -465,6 +466,7 @@ def make_figure_price(summary_df):
                 marker=dict(size=8, color=COLOR_DOWN),
                 connectgaps=False,
                 showlegend=False,
+                legendgroup=line,
             ))
     else:
         x = summary_df["YM_label"]
@@ -474,6 +476,7 @@ def make_figure_price(summary_df):
             mode="lines+markers",
             line=dict(color=COLOR_TERTIARY, width=3),
             marker=dict(size=6, color=COLOR_TERTIARY),
+            legendgroup="Price",
         ))
         # Mark months with |MoM change| above the threshold in red
         pct_change = price.pct_change() * 100
@@ -484,6 +487,7 @@ def make_figure_price(summary_df):
             line=dict(color=COLOR_DOWN, width=3),
             marker=dict(size=8, color=COLOR_DOWN),
             connectgaps=False,
+            legendgroup="Price",
         ))
     fig.update_layout(
         template="plotly_white",
@@ -602,30 +606,10 @@ def build_dashboard():
     # Exclude aggregate provinces from the whole dashboard
     df = df[~df["Province"].isin(EXCLUDED_PROVINCES)].reset_index(drop=True)
 
-    # Cascade filters in strict order; empty selection = all values
-    st.markdown("##### Filters")
-    selections = {}
-    mask = pd.Series(True, index=df.index)
-    cols = st.columns(4)
-    for idx, col_name in enumerate(FILTER_ORDER):
-        with cols[idx % 4]:
-            available = sorted(df.loc[mask, col_name].dropna().unique().tolist())
-            selected = st.multiselect(
-                col_name, available, key=f"filter_{col_name}",
-                help="Leave empty to select all",
-            )
-            selections[col_name] = selected
-            if selected:
-                mask &= df[col_name].isin(selected)
-
-    # Price chart on top (full width) — one line per selected Product/Company
-    price_lines_df = make_price_lines_df(df, selections)
-    st.plotly_chart(make_figure_price(price_lines_df), use_container_width=True)
-
-    # Province Price Break Down: province × month price table
+    # === Province Price Overview (top module) ===
     st.markdown(
         f'<h3 style="font-family:{FONT_FAMILY};font-size:24px;font-weight:bold;'
-        f'color:{COLOR_PRIMARY};">Province Price Break Down</h3>',
+        f'color:{COLOR_PRIMARY};">Province Price Overview</h3>',
         unsafe_allow_html=True,
     )
     st.caption(
@@ -672,6 +656,32 @@ def build_dashboard():
         styled_tbl, use_container_width=True,
         column_config=col_config,
     )
+
+    # === Price Breakdown (filters + Monthly Price chart) ===
+    st.markdown(
+        f'<h3 style="font-family:{FONT_FAMILY};font-size:24px;font-weight:bold;'
+        f'color:{COLOR_PRIMARY};">Price Breakdown</h3>',
+        unsafe_allow_html=True,
+    )
+    # Cascade filters in strict order; empty selection = all values
+    st.markdown("##### Filters")
+    selections = {}
+    mask = pd.Series(True, index=df.index)
+    cols = st.columns(4)
+    for idx, col_name in enumerate(FILTER_ORDER):
+        with cols[idx % 4]:
+            available = sorted(df.loc[mask, col_name].dropna().unique().tolist())
+            selected = st.multiselect(
+                col_name, available, key=f"filter_{col_name}",
+                help="Leave empty to select all",
+            )
+            selections[col_name] = selected
+            if selected:
+                mask &= df[col_name].isin(selected)
+
+    # Monthly Price chart — one line per selected Product/Company
+    price_lines_df = make_price_lines_df(df, selections)
+    st.plotly_chart(make_figure_price(price_lines_df), use_container_width=True)
 
 
 # === CLI Entry
