@@ -75,6 +75,9 @@ LINE_COLORS = [
 # Price spike marking threshold (month-over-month change, in percent)
 PRICE_CHANGE_THRESHOLD_PCT = 5.0
 
+# Fixed business order for the Company filter options
+COMPANY_ORDER = ["纽迪希亚", "费卡华瑞", "雅培", "其他"]
+
 # Data cache (module-level global)
 _data_cache = None
 
@@ -148,6 +151,27 @@ def load_flat_file():
 
 
 # === Aggregation (shared by any frontend)
+def _sort_filter_options(col_name, values):
+    """Sort filter options for the dashboard filters.
+
+    Company uses the fixed business order (COMPANY_ORDER) with any unknown
+    companies appended alphabetically; all other columns (e.g. Product)
+    sort by name.
+
+    Args:
+        col_name: Filter column name.
+        values: List of option values.
+
+    Returns:
+        list: Sorted option values.
+    """
+    if col_name == "Company":
+        known = [c for c in COMPANY_ORDER if c in values]
+        rest = sorted(v for v in values if v not in COMPANY_ORDER)
+        return known + rest
+    return sorted(values)
+
+
 def build_selection_mask(data_df, selections, columns):
     """Build a boolean mask from the selected values of the given columns.
 
@@ -618,7 +642,9 @@ def build_dashboard():
         "Sorted by CM YOY Change % descending."
     )
     bd_company = st.selectbox(
-        "Company", sorted(df["Company"].dropna().unique()),
+        "Company", _sort_filter_options(
+            "Company", df["Company"].dropna().unique().tolist()
+        ),
         key="bd_company", index=None,
         placeholder="Select Company",
     )
@@ -657,10 +683,10 @@ def build_dashboard():
         column_config=col_config,
     )
 
-    # === Price Breakdown (filters + Monthly Price chart) ===
+    # === Price Trend Comparison (filters + Monthly Price chart) ===
     st.markdown(
         f'<h3 style="font-family:{FONT_FAMILY};font-size:24px;font-weight:bold;'
-        f'color:{COLOR_PRIMARY};">Price Breakdown</h3>',
+        f'color:{COLOR_PRIMARY};">Price Trend Comparison</h3>',
         unsafe_allow_html=True,
     )
     # Cascade filters in strict order; empty selection = all values
@@ -670,7 +696,9 @@ def build_dashboard():
     cols = st.columns(4)
     for idx, col_name in enumerate(FILTER_ORDER):
         with cols[idx % 4]:
-            available = sorted(df.loc[mask, col_name].dropna().unique().tolist())
+            available = _sort_filter_options(
+                col_name, df.loc[mask, col_name].dropna().unique().tolist()
+            )
             selected = st.multiselect(
                 col_name, available, key=f"filter_{col_name}",
                 help="Leave empty to select all",

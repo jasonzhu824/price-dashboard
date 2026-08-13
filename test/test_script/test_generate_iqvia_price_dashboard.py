@@ -275,5 +275,27 @@ class TestPctRedStyle(unittest.TestCase):
         self.assertEqual(module._pct_red_style("N/A"), "")
 
 
+class TestFilterOptionSorting(unittest.TestCase):
+    """Company options follow business order; other columns sort by name."""
+
+    def test_company_fixed_order(self):
+        values = ["雀巢", "其他", "雅培", "纽迪希亚", "费卡华瑞"]
+        result = module._sort_filter_options("Company", values)
+        self.assertEqual(
+            result, ["纽迪希亚", "费卡华瑞", "雅培", "其他", "雀巢"]
+        )
+
+    def test_unknown_company_appended_alphabetically(self):
+        values = ["雀巢", "雅培"]
+        result = module._sort_filter_options("Company", values)
+        self.assertEqual(result, ["雅培", "雀巢"])
+
+    def test_other_columns_sorted_by_name(self):
+        values = ["b", "a", "c"]
+        self.assertEqual(
+            module._sort_filter_options("Product", values), ["a", "b", "c"]
+        )
+
+
 if __name__ == "__main__":
     unittest.main(verbosity=2)
