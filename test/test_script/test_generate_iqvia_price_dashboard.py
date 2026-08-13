@@ -248,5 +248,22 @@ class TestProvincePriceTable(unittest.TestCase):
                     self.assertNotIn("e-", str(val))
 
 
+class TestPctRedStyle(unittest.TestCase):
+    """YOY/MoM values >= 5% in absolute terms must be highlighted red."""
+
+    def test_highlight_at_or_above_threshold(self):
+        self.assertTrue(module._pct_red_style("+5.20%"))
+        self.assertTrue(module._pct_red_style("-5.00%"))
+        self.assertTrue(module._pct_red_style("+26.73%"))
+
+    def test_no_highlight_below_threshold(self):
+        self.assertEqual(module._pct_red_style("+4.99%"), "")
+        self.assertEqual(module._pct_red_style("-4.99%"), "")
+
+    def test_no_highlight_for_placeholders(self):
+        self.assertEqual(module._pct_red_style("<0.01%"), "")
+        self.assertEqual(module._pct_red_style("N/A"), "")
+
+
 if __name__ == "__main__":
     unittest.main(verbosity=2)

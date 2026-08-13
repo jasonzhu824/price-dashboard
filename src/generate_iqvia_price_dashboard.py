@@ -50,8 +50,8 @@ FILTER_ORDER = [
     "Channel",
     "Company",
     "Tube-ONS",
-    "Product",
     "Product Category",
+    "Product",
 ]
 
 # Danone AMN SFE Data Visualization Style Guide palette
@@ -382,6 +382,28 @@ def _fmt_pct(val):
     return f"{val:+.2f}%"
 
 
+# Threshold (absolute %) for red-highlighting YOY/MoM in the table
+PCT_RED_THRESHOLD = 5.0
+
+
+def _pct_red_style(val):
+    """Return red CSS when the formatted percentage is >= 5% in absolute terms.
+
+    Args:
+        val: Formatted percentage string (e.g. "+5.20%", "-6.00%", "<0.01%", "N/A").
+
+    Returns:
+        str: "color: #ee3340;" when |value| >= threshold, otherwise "".
+    """
+    if not isinstance(val, str) or val in ("N/A", "<0.01%"):
+        return ""
+    try:
+        num = float(val.replace("%", "").replace("+", ""))
+    except ValueError:
+        return ""
+    return f"color: {COLOR_DOWN};" if abs(num) >= PCT_RED_THRESHOLD else ""
+
+
 # === Chart & Table (Danone AMN SFE style)
 def _make_empty_figure():
     """Build an empty figure with a 'no data' annotation."""
@@ -577,6 +599,8 @@ def build_dashboard():
         return load_flat_file()
     df = _load_flat().copy()
     df["YM"] = df["YM"].astype(int)
+    # Exclude aggregate provinces from the whole dashboard
+    df = df[~df["Province"].isin(EXCLUDED_PROVINCES)].reset_index(drop=True)
 
     # Cascade filters in strict order; empty selection = all values
     st.markdown("##### Filters")
@@ -640,8 +664,12 @@ def build_dashboard():
     }
     col_config["CM YOY Change %"] = st.column_config.TextColumn("CM YOY Change %")
     col_config["CM MoM Change %"] = st.column_config.TextColumn("CM MoM Change %")
+    styled_tbl = tbl.style.map(
+        _pct_red_style,
+        subset=["CM YOY Change %", "CM MoM Change %"],
+    )
     st.dataframe(
-        tbl, use_container_width=True,
+        styled_tbl, use_container_width=True,
         column_config=col_config,
     )
 
