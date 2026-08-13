@@ -580,20 +580,20 @@ def _apply_danone_style():
         h5 {{
             font-size: 17px;
         }}
-        /* Filter labels in Danone secondary blue */
+        /* Filter labels in Danone secondary blue — bold */
         .stMultiSelect > label,
         .stSelectbox > label {{
             color: {COLOR_SECONDARY};
-            font-weight: bold;
+            font-weight: 700 !important;
             font-family: {FONT_FAMILY};
             font-size: 15px;
         }}
         /* Selected-value tag in Danone tertiary blue */
-        [data-baseweb="tag"] {{
+        .stMultiSelect [data-baseweb="tag"] {{
             background-color: {COLOR_TERTIARY} !important;
         }}
-        [data-baseweb="tag"] span,
-        [data-baseweb="tag"] svg {{
+        .stMultiSelect [data-baseweb="tag"] span,
+        .stMultiSelect [data-baseweb="tag"] svg {{
             color: #ffffff !important;
         }}
         /* Frosted select widgets */
