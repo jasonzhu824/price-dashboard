@@ -715,7 +715,7 @@ def build_dashboard():
         subset=["CM YOY Change %", "CM MoM Change %"],
     )
     st.dataframe(
-        styled_tbl, use_container_width=True,
+        styled_tbl, width="stretch",
         column_config=col_config,
     )
 
@@ -744,7 +744,7 @@ def build_dashboard():
 
     # Monthly Price chart — one line per selected Product/Company
     price_lines_df = make_price_lines_df(df, selections)
-    st.plotly_chart(make_figure_price(price_lines_df), use_container_width=True)
+    st.plotly_chart(make_figure_price(price_lines_df), width="stretch")
 
 
 # === CLI Entry
