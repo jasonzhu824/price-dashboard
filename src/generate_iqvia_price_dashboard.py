@@ -472,15 +472,28 @@ def make_figure_price(summary_df):
             color = LINE_COLORS[idx % len(LINE_COLORS)]
             grp = grp.sort_values("YM")
             price = grp["Price"]
+            pct_change = price.pct_change() * 100
             fig.add_trace(go.Scatter(
                 x=grp["YM_label"], y=price, name=line,
                 mode="lines+markers",
                 line=dict(color=color, width=3),
                 marker=dict(size=6, color=color),
                 legendgroup=line,
+                customdata=np.column_stack([
+                    pct_change.apply(
+                        lambda v: f"{v:+.2f}%" if pd.notna(v) else "N/A"
+                    ).values,
+                    grp["YM_label"].values,
+                ]),
+                hovertemplate=(
+                    f"<b>{line}</b><br>"
+                    "YM: %{customdata[1]}<br>"
+                    "Price: %{y:.2f} CNY<br>"
+                    "MoM Change: %{customdata[0]}<br>"
+                    "<extra></extra>"
+                ),
             ))
             # Mark |MoM change| above the threshold in red per line
-            pct_change = price.pct_change() * 100
             spike_y = price.where(pct_change.abs() > PRICE_CHANGE_THRESHOLD_PCT)
             fig.add_trace(go.Scatter(
                 x=grp["YM_label"], y=spike_y,
@@ -491,19 +504,32 @@ def make_figure_price(summary_df):
                 connectgaps=False,
                 showlegend=False,
                 legendgroup=line,
+                hoverinfo="skip",
             ))
     else:
         x = summary_df["YM_label"]
         price = summary_df["Price"]
+        pct_change = price.pct_change() * 100
         fig.add_trace(go.Scatter(
             x=x, y=price, name="Price",
             mode="lines+markers",
             line=dict(color=COLOR_TERTIARY, width=3),
             marker=dict(size=6, color=COLOR_TERTIARY),
             legendgroup="Price",
+            customdata=np.column_stack([
+                pct_change.apply(
+                    lambda v: f"{v:+.2f}%" if pd.notna(v) else "N/A"
+                ).values,
+                x.values,
+            ]),
+            hovertemplate=(
+                "YM: %{customdata[1]}<br>"
+                "Price: %{y:.2f} CNY<br>"
+                "MoM Change: %{customdata[0]}<br>"
+                "<extra></extra>"
+            ),
         ))
         # Mark months with |MoM change| above the threshold in red
-        pct_change = price.pct_change() * 100
         spike_y = price.where(pct_change.abs() > PRICE_CHANGE_THRESHOLD_PCT)
         fig.add_trace(go.Scatter(
             x=x, y=spike_y, name=f"MoM Change > {PRICE_CHANGE_THRESHOLD_PCT:.0f}%",
@@ -512,6 +538,7 @@ def make_figure_price(summary_df):
             marker=dict(size=8, color=COLOR_DOWN),
             connectgaps=False,
             legendgroup="Price",
+            hoverinfo="skip",
         ))
     fig.update_layout(
         template="plotly_white",
