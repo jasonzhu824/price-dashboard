@@ -479,17 +479,14 @@ def make_figure_price(summary_df):
                 line=dict(color=color, width=3),
                 marker=dict(size=6, color=color),
                 legendgroup=line,
-                customdata=np.column_stack([
-                    pct_change.apply(
-                        lambda v: f"{v:+.2f}%" if pd.notna(v) else "N/A"
-                    ).values,
-                    grp["YM_label"].values,
-                ]),
+                customdata=pct_change.apply(
+                    lambda v: f"{v:+.2f}%" if pd.notna(v) else "N/A"
+                ).values,
                 hovertemplate=(
                     f"<b>{line}</b><br>"
-                    "YM: %{customdata[1]}<br>"
+                    "YM: %{x}<br>"
                     "Price: %{y:.2f} CNY<br>"
-                    "MoM Change: %{customdata[0]}<br>"
+                    "MoM Change: %{customdata}<br>"
                     "<extra></extra>"
                 ),
             ))
@@ -516,16 +513,13 @@ def make_figure_price(summary_df):
             line=dict(color=COLOR_TERTIARY, width=3),
             marker=dict(size=6, color=COLOR_TERTIARY),
             legendgroup="Price",
-            customdata=np.column_stack([
-                pct_change.apply(
-                    lambda v: f"{v:+.2f}%" if pd.notna(v) else "N/A"
-                ).values,
-                x.values,
-            ]),
+            customdata=pct_change.apply(
+                lambda v: f"{v:+.2f}%" if pd.notna(v) else "N/A"
+            ).values,
             hovertemplate=(
-                "YM: %{customdata[1]}<br>"
+                "YM: %{x}<br>"
                 "Price: %{y:.2f} CNY<br>"
-                "MoM Change: %{customdata[0]}<br>"
+                "MoM Change: %{customdata}<br>"
                 "<extra></extra>"
             ),
         ))
@@ -548,7 +542,7 @@ def make_figure_price(summary_df):
             text="Monthly Price",
             font=dict(family=FONT_FAMILY, size=24, color=COLOR_PRIMARY),
         ),
-        xaxis=dict(title=None, tickfont=dict(size=11), gridcolor="#e6e6e6",
+        xaxis=dict(type="category", title=None, tickfont=dict(size=11), gridcolor="#e6e6e6",
                    tickangle=-45, tickmode="array",
                    tickvals=list(x)[::3], ticktext=list(x)[::3]),
         yaxis=dict(
